@@ -1,0 +1,7 @@
+@import "tailwindcss";
+body{
+  overflow: hidden;
+}
+canvas {
+  @apply w-screen h-screen;
+}
