@@ -1,28 +1,27 @@
 import { HavokPlugin } from "@babylonjs/core";
 
-let havokInstance: any = null;
-let havokPromise: Promise<any> | null = null;
+// Havok instance type (WASM module)
+type HavokInstance = Awaited<ReturnType<typeof import("@babylonjs/havok").default>>;
 
-async function initHavok(): Promise<any> {
-  if (havokInstance) return havokInstance;
-  if (havokPromise) return havokPromise;
+let instance: HavokInstance | null = null;
+let loading: Promise<HavokInstance> | null = null;
 
-  havokPromise = (async () => {
+async function initHavok(): Promise<HavokInstance> {
+  if (instance) return instance;
+  if (loading) return loading;
+
+  loading = (async () => {
     const HavokPhysics = (await import("@babylonjs/havok")).default;
-    havokInstance = await HavokPhysics({
+    instance = await HavokPhysics({
       locateFile: () => "/assets/HavokPhysics.wasm",
     });
-    return havokInstance;
+    return instance;
   })();
 
-  return havokPromise;
+  return loading;
 }
 
-/**
- * Gets the initialized Havok physics plugin.
- * Lazily initializes Havok only when first called.
- */
 export async function getHavokPlugin(): Promise<HavokPlugin> {
-  const instance = await initHavok();
-  return new HavokPlugin(true, instance);
+  const havok = await initHavok();
+  return new HavokPlugin(true, havok);
 }

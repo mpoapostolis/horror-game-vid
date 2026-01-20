@@ -12,49 +12,71 @@ import {
 import { AudioManager } from "../managers/AudioManager";
 import { LevelManager } from "../managers/LevelManager";
 
+const PORTAL_CONFIG = {
+  diameter: 1.5,
+  color: new Color3(0, 0.8, 1),
+  lightIntensity: 5,
+  lightRange: 10,
+  rotationSpeed: 0.02,
+  floatSpeed: 0.003,
+  floatAmplitude: 0.3,
+} as const;
+
 export class Portal {
-  public mesh: TransformNode;
+  readonly mesh: TransformNode;
 
   constructor(scene: Scene, position: Vector3, targetLevelId: string) {
-    // 1. Create the Sphere
-    const orb = MeshBuilder.CreateSphere("portalOrb", { diameter: 1.5 }, scene);
-    orb.position = position;
+    const {
+      diameter,
+      color,
+      lightIntensity,
+      lightRange,
+      rotationSpeed,
+      floatSpeed,
+      floatAmplitude,
+    } = PORTAL_CONFIG;
+
+    // Orb mesh
+    const orb = MeshBuilder.CreateSphere("portal", { diameter }, scene);
+    orb.position.copyFrom(position);
     this.mesh = orb;
 
-    // 2. Create Glowing Material
-    const mat = new StandardMaterial("orbMat", scene);
-    mat.emissiveColor = new Color3(0, 0.8, 1);
+    // Material
+    const mat = new StandardMaterial("portalMat", scene);
+    mat.emissiveColor = color;
     mat.alpha = 0.8;
     orb.material = mat;
 
-    // 3. Create Light
-    const orbLight = new PointLight("orbLight", Vector3.Zero(), scene);
-    orbLight.parent = orb;
-    orbLight.diffuse = new Color3(0, 0.8, 1);
-    orbLight.intensity = 5;
-    orbLight.range = 10;
+    // Light
+    const light = new PointLight("portalLight", Vector3.Zero(), scene);
+    light.parent = orb;
+    light.diffuse = color;
+    light.intensity = lightIntensity;
+    light.range = lightRange;
 
-    // 4. Handle Interaction (Click to load level)
+    // Click interaction
     orb.actionManager = new ActionManager(scene);
     orb.actionManager.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
-        const levelManager = LevelManager.getInstance();
-        levelManager.load(targetLevelId);
+        LevelManager.getInstance().load(targetLevelId);
         AudioManager.getInstance().play("teleport");
       })
     );
 
-    // 5. Self-contained Animation (Float & Rotate)
+    // Animation using accumulated time (not Date.now() every frame)
     const startY = position.y;
+    let time = 0;
+
     const observer = scene.onBeforeRenderObservable.add(() => {
-      // Rotate
-      orb.rotation.y += 0.02;
-      // Float
-      orb.position.y = startY + Math.sin(Date.now() * 0.003) * 0.3;
+      const dt = scene.getEngine().getDeltaTime() * 0.001;
+      time += dt;
+
+      orb.rotation.y += rotationSpeed;
+      orb.position.y = startY + Math.sin(time * floatSpeed * 1000) * floatAmplitude;
     });
 
-    // Cleanup observer when mesh is disposed (level unload)
-    orb.onDisposeObservable.add(() => {
+    // Cleanup on dispose
+    orb.onDisposeObservable.addOnce(() => {
       scene.onBeforeRenderObservable.remove(observer);
     });
   }

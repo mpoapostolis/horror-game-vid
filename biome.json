@@ -60,6 +60,7 @@
         "useTemplate": "error"
       },
       "suspicious": {
+        "noAssignInExpressions": "off",
         "noAsyncPromiseExecutor": "error",
         "noCatchAssign": "error",
         "noClassAssign": "error",

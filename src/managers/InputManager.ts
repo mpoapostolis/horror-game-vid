@@ -1,29 +1,43 @@
-import { KeyboardEventTypes, type Scene } from "@babylonjs/core";
+import type { KeyboardInfo } from "@babylonjs/core";
+import { KeyboardEventTypes, type Observer, type Scene } from "@babylonjs/core";
 
 export class InputManager {
   private static instance: InputManager;
-  public keySet: Set<string> = new Set();
+
+  private keys = new Set<string>();
+  private observer: Observer<KeyboardInfo> | null = null;
+  private scene: Scene | null = null;
 
   private constructor() {}
 
-  public static getInstance(): InputManager {
-    if (!InputManager.instance) {
-      InputManager.instance = new InputManager();
-    }
-    return InputManager.instance;
+  static getInstance(): InputManager {
+    return (InputManager.instance ??= new InputManager());
   }
 
-  public init(scene: Scene): void {
-    scene.onKeyboardObservable.add((keys) => {
-      if (keys.type === KeyboardEventTypes.KEYDOWN) {
-        this.keySet.add(keys.event.code);
-      } else if (keys.type === KeyboardEventTypes.KEYUP) {
-        this.keySet.delete(keys.event.code);
+  init(scene: Scene): void {
+    this.dispose();
+    this.scene = scene;
+
+    this.observer = scene.onKeyboardObservable.add((info) => {
+      const code = info.event.code;
+      if (info.type === KeyboardEventTypes.KEYDOWN) {
+        this.keys.add(code);
+      } else if (info.type === KeyboardEventTypes.KEYUP) {
+        this.keys.delete(code);
       }
     });
   }
 
-  public isKeyDown(code: string): boolean {
-    return this.keySet.has(code);
+  dispose(): void {
+    if (this.observer && this.scene) {
+      this.scene.onKeyboardObservable.remove(this.observer);
+    }
+    this.observer = null;
+    this.scene = null;
+    this.keys.clear();
+  }
+
+  isKeyDown(code: string): boolean {
+    return this.keys.has(code);
   }
 }

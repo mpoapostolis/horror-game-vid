@@ -14,15 +14,23 @@ import { ANIMATIONS } from "../hero_anim";
 import { InputManager } from "../managers/InputManager";
 
 export class Player {
-  public mesh: AbstractMesh;
-  public anims: Map<string, AnimationGroup>;
-  public spotLight: SpotLight;
-  public capsule: AbstractMesh;
-  public physicsAggregate: PhysicsAggregate;
+  readonly mesh: AbstractMesh;
+  readonly capsule: AbstractMesh;
+  readonly spotLight: SpotLight;
+  readonly physicsAggregate: PhysicsAggregate;
 
-  private input: InputManager;
-  private camera: ArcRotateCamera;
-  private moveSpeed = 5;
+  private readonly anims: Map<string, AnimationGroup>;
+  private readonly input: InputManager;
+  private readonly camera: ArcRotateCamera;
+  private readonly moveSpeed = 5;
+
+  // Reusable vectors to avoid GC
+  private readonly moveVec = Vector3.Zero();
+  private readonly velocityVec = Vector3.Zero();
+  private readonly lookVec = Vector3.Zero();
+
+  // Animation state
+  private currentAnim: string | null = null;
 
   constructor(
     mesh: AbstractMesh,
@@ -35,39 +43,34 @@ export class Player {
     this.camera = camera;
     this.input = InputManager.getInstance();
 
-    // Create physics capsule
+    // Physics capsule
     this.capsule = MeshBuilder.CreateCapsule("playerCapsule", { height: 2, radius: 0.25 }, scene);
-    this.capsule.position = new Vector3(0, 1, 0);
+    this.capsule.position.set(0, 1, 0);
     this.capsule.isVisible = false;
-    this.capsule.visibility = 0.4;
 
-    // Parent the visual mesh to the capsule
+    // Parent mesh to capsule
     this.mesh.parent = this.capsule;
     this.mesh.position.y = -1;
 
-    // Create physics aggregate for the capsule
+    // Physics
     this.physicsAggregate = new PhysicsAggregate(
       this.capsule,
       PhysicsShapeType.CAPSULE,
       { mass: 1, friction: 0.5, restitution: 0 },
       scene
     );
+    this.physicsAggregate.body.setMassProperties({ inertia: Vector3.Zero() });
 
-    // Lock rotation so capsule stays upright
-    this.physicsAggregate.body.setMassProperties({
-      inertia: new Vector3(0, 0, 0),
-    });
-
-    // Setup animations
-    this.anims = new Map<string, AnimationGroup>(animationGroups.map((ag) => [ag.name, ag]));
+    // Animations
+    this.anims = new Map(animationGroups.map((ag) => [ag.name, ag]));
     scene.stopAllAnimations();
 
-    // Add shadow caster
+    // Shadow
     shadowGenerator.addShadowCaster(mesh);
 
-    // Player spotlight
+    // Spotlight
     this.spotLight = new SpotLight(
-      "flashlight",
+      "playerLight",
       Vector3.Zero(),
       Vector3.Forward(),
       Math.PI / 2,
@@ -77,80 +80,87 @@ export class Player {
     this.spotLight.position.y = 2;
     this.spotLight.parent = this.mesh;
 
-    // Start idle
-    const idleAnim = this.anims.get(ANIMATIONS.Idle_Neutral);
-    idleAnim?.play(true);
+    // Initial animation
+    this.playAnim(ANIMATIONS.Idle_Neutral);
   }
 
-  public update(): void {
-    const dirForward = this.camera.getDirection(Vector3.Forward());
-    const dirRight = this.camera.getDirection(Vector3.Right());
-    dirForward.y = 0;
-    dirRight.y = 0;
-    dirRight.normalize();
-    dirForward.normalize();
-    const moveVec = Vector3.Zero();
-    let isMoving = false;
+  update(): void {
+    const forward = this.camera.getDirection(Vector3.Forward());
+    const right = this.camera.getDirection(Vector3.Right());
+    forward.y = 0;
+    right.y = 0;
+    forward.normalize();
+    right.normalize();
 
-    if (this.input.isKeyDown("KeyW")) {
-      moveVec.addInPlace(dirForward);
-      isMoving = true;
-    }
+    // Reset move vector
+    this.moveVec.setAll(0);
 
-    if (this.input.isKeyDown("KeyS")) {
-      moveVec.subtractInPlace(dirForward);
-      isMoving = true;
-    }
-    if (this.input.isKeyDown("KeyA")) {
-      moveVec.subtractInPlace(dirRight);
-      isMoving = true;
-    }
-    if (this.input.isKeyDown("KeyD")) {
-      moveVec.addInPlace(dirRight);
-      isMoving = true;
-    }
+    // Input
+    const w = this.input.isKeyDown("KeyW");
+    const s = this.input.isKeyDown("KeyS");
+    const a = this.input.isKeyDown("KeyA");
+    const d = this.input.isKeyDown("KeyD");
 
-    // Get current vertical velocity to preserve gravity
-    const currentVelocity = this.physicsAggregate.body.getLinearVelocity();
+    if (w) this.moveVec.addInPlace(forward);
+    if (s) this.moveVec.subtractInPlace(forward);
+    if (a) this.moveVec.subtractInPlace(right);
+    if (d) this.moveVec.addInPlace(right);
+
+    const isMoving = w || s || a || d;
+    const currentY = this.physicsAggregate.body.getLinearVelocity().y;
 
     if (isMoving) {
-      moveVec.normalize();
-      moveVec.y = 0;
-      // Set horizontal velocity while preserving vertical (gravity)
-      this.physicsAggregate.body.setLinearVelocity(
-        new Vector3(moveVec.x * this.moveSpeed, currentVelocity.y, moveVec.z * this.moveSpeed)
+      this.moveVec.normalize();
+
+      // Set velocity (reuse vector)
+      this.velocityVec.set(
+        this.moveVec.x * this.moveSpeed,
+        currentY,
+        this.moveVec.z * this.moveSpeed
       );
+      this.physicsAggregate.body.setLinearVelocity(this.velocityVec);
 
-      let animToPlay = ANIMATIONS.Run;
-      if (this.input.isKeyDown("KeyS")) animToPlay = ANIMATIONS.Run_Back;
-      else if (this.input.isKeyDown("KeyW")) animToPlay = ANIMATIONS.Run;
-      else if (this.input.isKeyDown("KeyA")) animToPlay = ANIMATIONS.Run_Left;
-      else if (this.input.isKeyDown("KeyD")) animToPlay = ANIMATIONS.Run_Right;
-
-      const anim = this.anims.get(animToPlay);
-      if (anim && !anim.isPlaying) {
-        this.anims.forEach((a) => a.stop());
-        anim.play(true);
-      }
+      // Animation based on primary direction
+      const anim = s
+        ? ANIMATIONS.Run_Back
+        : a
+          ? ANIMATIONS.Run_Left
+          : d
+            ? ANIMATIONS.Run_Right
+            : ANIMATIONS.Run;
+      this.playAnim(anim);
     } else {
-      // Stop horizontal movement but keep vertical velocity
-      this.physicsAggregate.body.setLinearVelocity(new Vector3(0, currentVelocity.y, 0));
-
-      const idle = this.anims.get(ANIMATIONS.Idle_Neutral);
-      if (idle && !idle.isPlaying) {
-        this.anims.forEach((a) => a.stop());
-        idle.play(true);
-      }
+      // Stop horizontal movement
+      this.velocityVec.set(0, currentY, 0);
+      this.physicsAggregate.body.setLinearVelocity(this.velocityVec);
+      this.playAnim(ANIMATIONS.Idle_Neutral);
     }
 
-    const dirForward1 = dirForward.scale(-2);
-    dirForward1.y = -Math.PI / 3;
-    this.mesh.lookAt(dirForward1);
-    // Camera follows the capsule
+    // Look direction
+    this.lookVec.copyFrom(forward).scaleInPlace(-2);
+    this.lookVec.y = -Math.PI / 3;
+    this.mesh.lookAt(this.lookVec);
+
+    // Camera follow
     this.camera.setTarget(this.capsule.position);
   }
 
-  public get position(): Vector3 {
+  private playAnim(name: string): void {
+    if (this.currentAnim === name) return;
+
+    const anim = this.anims.get(name);
+    if (!anim) return;
+
+    // Stop current
+    if (this.currentAnim) {
+      this.anims.get(this.currentAnim)?.stop();
+    }
+
+    anim.play(true);
+    this.currentAnim = name;
+  }
+
+  get position(): Vector3 {
     return this.capsule.position;
   }
 }

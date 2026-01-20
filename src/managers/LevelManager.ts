@@ -1,51 +1,48 @@
 import type { Engine } from "../core/Engine";
 import type { BaseLevel } from "../levels/BaseLevel";
 import { DialogueManager } from "./DialogueManager";
+import { InputManager } from "./InputManager";
 
 export class LevelManager {
   private static instance: LevelManager;
+
   private currentLevel?: BaseLevel;
-  private levels: Map<string, () => BaseLevel> = new Map();
+  private levels = new Map<string, () => BaseLevel>();
 
-  private constructor(_engine: Engine) {
-    // Engine stored for potential future use
+  private constructor() {}
+
+  static getInstance(_engine?: Engine): LevelManager {
+    return (LevelManager.instance ??= new LevelManager());
   }
 
-  public static getInstance(engine?: Engine): LevelManager {
-    if (!LevelManager.instance) {
-      if (!engine) throw new Error("Engine required for first initialization");
-      LevelManager.instance = new LevelManager(engine);
-    }
-    return LevelManager.instance;
+  register(id: string, factory: () => BaseLevel): void {
+    this.levels.set(id, factory);
   }
 
-  public register(id: string, levelFactory: () => BaseLevel): void {
-    this.levels.set(id, levelFactory);
-  }
-
-  public async load(id: string): Promise<void> {
-    // Stop any active dialogue
-    DialogueManager.getInstance().stop();
-
-    // Dispose current level
-    if (this.currentLevel) {
-      this.currentLevel.dispose();
-    }
-
-    // Create new level
+  async load(id: string): Promise<void> {
     const factory = this.levels.get(id);
     if (!factory) throw new Error(`Level "${id}" not found`);
 
+    // Cleanup
+    DialogueManager.getInstance().stop();
+    InputManager.getInstance().dispose();
+
+    if (this.currentLevel) {
+      this.currentLevel.dispose();
+      this.currentLevel = undefined;
+    }
+
+    // Create and load
     this.currentLevel = factory();
     await this.currentLevel.load();
     this.currentLevel.start();
   }
 
-  public getCurrentLevel(): BaseLevel | undefined {
+  getCurrentLevel(): BaseLevel | undefined {
     return this.currentLevel;
   }
 
-  public update(): void {
+  update(): void {
     this.currentLevel?.update();
   }
 }
