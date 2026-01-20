@@ -18,6 +18,7 @@ import { AssetManager } from "../managers/AssetManager";
 import { InputManager } from "../managers/InputManager";
 import { Player } from "../entities/Player";
 import { Portal } from "../entities/Portal";
+import { EntityFactory } from "../factories/EntityFactory";
 import { getHavokPlugin } from "../physics";
 
 export interface LevelConfig {
@@ -63,6 +64,7 @@ export abstract class BaseLevel {
 
   // Added generic portal reference
   public portal?: Portal;
+  public entityFactory!: EntityFactory;
 
   protected config: LevelConfig;
 
@@ -112,6 +114,13 @@ export abstract class BaseLevel {
     this.shadowGenerator = new ShadowGenerator(1024, this.flashlight);
     this.shadowGenerator.useBlurExponentialShadowMap = true;
     this.shadowGenerator.blurKernel = 32;
+
+    // Entity Factory
+    this.entityFactory = new EntityFactory(
+      this.scene,
+      this.shadowGenerator,
+      this.assetManager
+    );
 
     // Atmosphere
     this.scene.clearColor = new Color4(...this.config.clearColor);

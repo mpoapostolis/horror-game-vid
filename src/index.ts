@@ -1,8 +1,8 @@
 async function initGame() {
   const { Engine } = await import("./core/Engine");
   const { LevelManager } = await import("./managers/LevelManager");
-  const { Level_1 } = await import("./levels/Level_1");
-  const { Level_2 } = await import("./levels/Level_2");
+  const { Level } = await import("./levels/Level");
+  const { LEVELS } = await import("./config/levels");
 
   const canvas = document.querySelector("canvas") as HTMLCanvasElement;
 
@@ -11,8 +11,10 @@ async function initGame() {
 
   const levelManager = LevelManager.getInstance(engine);
 
-  levelManager.register("level1", () => new Level_1());
-  levelManager.register("level2", () => new Level_2());
+  // Register all levels from config
+  for (const [id, config] of Object.entries(LEVELS)) {
+    levelManager.register(id, () => new Level(config));
+  }
 
   await levelManager.load("level1");
 
