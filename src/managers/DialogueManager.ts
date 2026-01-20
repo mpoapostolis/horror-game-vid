@@ -26,7 +26,6 @@ export class DialogueManager {
   private typeTimer?: number;
   private lineTimer?: number;
 
-  // Cached audio manager
   private audio = AudioManager.getInstance();
 
   private constructor() {
@@ -40,101 +39,63 @@ export class DialogueManager {
   private createUI(): void {
     if (typeof document === "undefined") return;
 
+    this.overlay = document.createElement("div");
+    this.overlay.id = "dialogue-overlay";
+    this.overlay.className =
+      "fixed bottom-12 left-1/2 transform -translate-x-1/2 w-[90%] max-w-3xl bg-gradient-to-b from-black/95 to-gray-900/95 border-y-4 text-white p-8 rounded-sm shadow-2xl pointer-events-none opacity-0 translate-y-4 transition-all duration-500 z-50 backdrop-blur-xl flex flex-col items-center gap-4";
+
+    // Speaker Label
+    this.speakerEl = document.createElement("span");
+    this.speakerEl.id = "speaker-label";
+    this.speakerEl.className =
+      "font-bold uppercase tracking-[0.3em] text-sm mb-2 opacity-90 font-sans";
+    this.speakerEl.textContent = "UNKNOWN";
+    this.overlay.appendChild(this.speakerEl);
+
+    // Text
+    this.textEl = document.createElement("p");
+    this.textEl.className =
+      "text-xl md:text-2xl font-mono tracking-wide text-center min-h-[1.5em] leading-relaxed drop-shadow-md";
+    this.overlay.appendChild(this.textEl);
+
     // Styles
     const style = document.createElement("style");
     style.textContent = `
-      .dialogue-overlay {
-        position: fixed;
-        bottom: 48px;
-        left: 50%;
-        transform: translateX(-50%) translateY(16px);
-        width: 90%;
-        max-width: 720px;
-        background: linear-gradient(to bottom, rgba(0,0,0,0.95), rgba(20,20,30,0.95));
-        border-top: 4px solid currentColor;
-        border-bottom: 4px solid currentColor;
-        color: white;
-        padding: 32px;
-        border-radius: 2px;
-        z-index: 50;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.4s, transform 0.4s, visibility 0.4s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        backdrop-filter: blur(12px);
-      }
-      .dialogue-overlay.visible {
-        opacity: 1;
-        visibility: visible;
-        transform: translateX(-50%) translateY(0);
-      }
-      .dialogue-speaker {
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 0.3em;
-        font-size: 14px;
-        opacity: 0.9;
-      }
-      .dialogue-text {
-        font-family: monospace;
-        font-size: 20px;
-        text-align: center;
-        min-height: 1.5em;
-        line-height: 1.6;
-      }
-      .dialogue-text.typing::after {
-        content: '';
-        display: inline-block;
-        width: 0.6em;
-        height: 1.2em;
-        background: currentColor;
-        margin-left: 4px;
-        vertical-align: middle;
-        animation: blink 1s step-end infinite;
-      }
-      @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+      @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+      @keyframes pulse-red { 0% { border-color: rgba(127, 29, 29, 0.6); box-shadow: 0 0 15px rgba(127, 29, 29, 0.1); } 50% { border-color: rgba(220, 38, 38, 1); box-shadow: 0 0 30px rgba(220, 38, 38, 0.4); } 100% { border-color: rgba(127, 29, 29, 0.6); box-shadow: 0 0 15px rgba(127, 29, 29, 0.1); } }
+      @keyframes pulse-cyan { 0% { border-color: rgba(6, 182, 212, 0.6); box-shadow: 0 0 15px rgba(6, 182, 212, 0.1); } 50% { border-color: rgba(34, 211, 238, 1); box-shadow: 0 0 30px rgba(34, 211, 238, 0.4); } 100% { border-color: rgba(6, 182, 212, 0.6); box-shadow: 0 0 15px rgba(6, 182, 212, 0.1); } }
+      @keyframes glitch { 0% { text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00; transform: translate(0); } 20% { text-shadow: -2px 2px 0px #ff0000, 2px -2px 0px #00ff00; transform: translate(-1px, 1px); } 40% { text-shadow: 2px -2px 0px #ff0000, -2px 2px 0px #00ff00; transform: translate(1px, -1px); } 100% { text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00; transform: translate(0); } }
 
-      /* Themes */
-      .dialogue-overlay.theme-demon {
-        border-color: #dc2626;
-        animation: pulse-red 3s infinite;
-      }
-      .theme-demon .dialogue-speaker { color: #ef4444; text-shadow: 0 0 10px rgba(239,68,68,0.8); }
-      .theme-demon .dialogue-text { color: #fecaca; }
+      .cursor::after { content: ''; display: inline-block; width: 0.6em; height: 1.2em; background: currentColor; margin-left: 4px; vertical-align: middle; animation: blink 1s step-end infinite; }
 
-      .dialogue-overlay.theme-wife {
-        border-color: #06b6d4;
-        animation: pulse-cyan 4s infinite;
+      /* CRT EFFECT */
+      #dialogue-overlay::before {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        z-index: 2;
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
       }
-      .theme-wife .dialogue-speaker { color: #67e8f9; text-shadow: 0 0 10px rgba(103,232,249,0.8); }
-      .theme-wife .dialogue-text { color: #ecfeff; }
 
-      @keyframes pulse-red {
-        0%,100% { border-color: rgba(127,29,29,0.6); box-shadow: 0 0 15px rgba(127,29,29,0.1); }
-        50% { border-color: #dc2626; box-shadow: 0 0 30px rgba(220,38,38,0.4); }
-      }
-      @keyframes pulse-cyan {
-        0%,100% { border-color: rgba(6,182,212,0.6); box-shadow: 0 0 15px rgba(6,182,212,0.1); }
-        50% { border-color: #22d3ee; box-shadow: 0 0 30px rgba(34,211,238,0.4); }
-      }
+      /* DEMON THEME */
+      .theme-demon { animation: pulse-red 3s infinite; }
+      .theme-demon #speaker-label { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+      .theme-demon p { color: #fecaca; text-shadow: 2px 0 #7f1d1d; animation: glitch 3s infinite alternate-reverse; }
+      .theme-demon .cursor::after { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+      /* WIFE THEME */
+      .theme-wife { animation: pulse-cyan 4s infinite; }
+      .theme-wife #speaker-label { color: #67e8f9; text-shadow: 0 0 10px rgba(103, 232, 249, 0.8); }
+      .theme-wife p { color: #ecfeff; text-shadow: 0 0 5px rgba(34, 211, 238, 0.6); }
+      .theme-wife .cursor::after { background: #22d3ee; box-shadow: 0 0 10px #22d3ee; }
     `;
     document.head.appendChild(style);
-
-    // Elements
-    this.overlay = document.createElement("div");
-    this.overlay.className = "dialogue-overlay";
-
-    this.speakerEl = document.createElement("div");
-    this.speakerEl.className = "dialogue-speaker";
-
-    this.textEl = document.createElement("p");
-    this.textEl.className = "dialogue-text";
-
-    this.overlay.appendChild(this.speakerEl);
-    this.overlay.appendChild(this.textEl);
     document.body.appendChild(this.overlay);
   }
 
@@ -153,31 +114,22 @@ export class DialogueManager {
     this.lineIndex = 0;
     this.active = true;
 
-    // Theme
     const speaker = dialogue.lines[0]?.speaker ?? "Unknown";
-    this.setTheme(speaker);
+    if (this.speakerEl) this.speakerEl.textContent = speaker;
 
-    this.show();
-    this.nextLine();
-  }
-
-  private setTheme(speaker: string): void {
-    if (!this.overlay) return;
-    this.overlay.classList.remove("theme-demon", "theme-wife");
-
+    // Theme
+    this.overlay?.classList.remove("theme-demon", "theme-wife");
     if (speaker === "Demon") {
-      this.overlay.classList.add("theme-demon");
+      this.overlay?.classList.add("theme-demon");
     } else if (speaker === "Wife") {
-      this.overlay.classList.add("theme-wife");
+      this.overlay?.classList.add("theme-wife");
     }
-  }
 
-  private show(): void {
-    this.overlay?.classList.add("visible");
-  }
+    // Show
+    this.overlay?.classList.remove("opacity-0", "translate-y-4");
+    this.overlay?.classList.add("opacity-100", "translate-y-0");
 
-  private hide(): void {
-    this.overlay?.classList.remove("visible");
+    this.nextLine();
   }
 
   private nextLine(): void {
@@ -192,34 +144,27 @@ export class DialogueManager {
       return;
     }
 
-    // Update speaker
-    if (this.speakerEl) {
-      this.speakerEl.textContent = line.speaker ?? "";
-    }
-
     // Typewriter - O(n) using substring
     if (this.textEl) {
       const text = line.text;
       let i = 0;
 
       this.textEl.textContent = "";
-      this.textEl.classList.add("typing");
+      this.textEl.classList.add("cursor");
 
       this.clearTimers();
 
       this.typeTimer = window.setInterval(() => {
         if (i < text.length) {
-          // O(n) total, not O(n²)
           this.textEl!.textContent = text.substring(0, ++i);
           this.audio.play("typing", false, 0.4);
         } else {
           window.clearInterval(this.typeTimer);
-          this.textEl?.classList.remove("typing");
+          this.textEl?.classList.remove("cursor");
         }
       }, 50);
     }
 
-    // Next line timer
     this.lineTimer = window.setTimeout(() => {
       this.lineIndex++;
       this.nextLine();
@@ -229,15 +174,15 @@ export class DialogueManager {
   private clearTimers(): void {
     if (this.typeTimer) window.clearInterval(this.typeTimer);
     if (this.lineTimer) window.clearTimeout(this.lineTimer);
-    this.typeTimer = undefined;
-    this.lineTimer = undefined;
   }
 
   private end(): void {
     this.clearTimers();
     this.active = false;
     this.current = undefined;
-    this.hide();
+
+    this.overlay?.classList.remove("opacity-100", "translate-y-0");
+    this.overlay?.classList.add("opacity-0", "translate-y-4");
   }
 
   stop(): void {
