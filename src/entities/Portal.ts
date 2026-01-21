@@ -1,83 +1,130 @@
+/**
+ * Portal - Interactive teleport orb with animations
+ * Features: rotation, floating animation, proper observer cleanup
+ */
+
 import {
   ActionManager,
   Color3,
   ExecuteCodeAction,
   MeshBuilder,
+  type Mesh,
+  type Observer,
   PointLight,
   type Scene,
   StandardMaterial,
-  type TransformNode,
   Vector3,
 } from "@babylonjs/core";
 import { AudioManager } from "../managers/AudioManager";
 import { LevelManager } from "../managers/LevelManager";
 
-const PORTAL_CONFIG = {
+interface PortalConfig {
+  diameter: number;
+  color: Color3;
+  lightIntensity: number;
+  lightRange: number;
+  rotationSpeed: number;
+  floatSpeed: number;
+  floatAmplitude: number;
+}
+
+const DEFAULT_CONFIG: PortalConfig = {
   diameter: 1.5,
   color: new Color3(0, 0.8, 1),
   lightIntensity: 5,
   lightRange: 10,
   rotationSpeed: 0.02,
-  floatSpeed: 0.003,
+  floatSpeed: 3,
   floatAmplitude: 0.3,
-} as const;
+};
 
 export class Portal {
-  readonly mesh: TransformNode;
+  readonly mesh: Mesh;
 
-  constructor(scene: Scene, position: Vector3, targetLevelId: string) {
-    const {
-      diameter,
-      color,
-      lightIntensity,
-      lightRange,
-      rotationSpeed,
-      floatSpeed,
-      floatAmplitude,
-    } = PORTAL_CONFIG;
+  private readonly scene: Scene;
+  private readonly light: PointLight;
+  private readonly material: StandardMaterial;
+  private readonly startY: number;
+  private readonly config: PortalConfig;
 
-    // Orb mesh
-    const orb = MeshBuilder.CreateSphere("portal", { diameter }, scene);
-    orb.position.copyFrom(position);
-    this.mesh = orb;
+  private renderObserver: Observer<Scene> | null = null;
+  private time = 0;
+  private disposed = false;
+
+  constructor(
+    scene: Scene,
+    position: Vector3,
+    targetLevelId: string,
+    config: Partial<PortalConfig> = {}
+  ) {
+    this.scene = scene;
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.startY = position.y;
+
+    // Create mesh
+    this.mesh = MeshBuilder.CreateSphere("portal", { diameter: this.config.diameter }, scene);
+    this.mesh.position.copyFrom(position);
 
     // Material
-    const mat = new StandardMaterial("portalMat", scene);
-    mat.emissiveColor = color;
-    mat.alpha = 0.8;
-    orb.material = mat;
+    this.material = new StandardMaterial("portalMat", scene);
+    this.material.emissiveColor = this.config.color;
+    this.material.alpha = 0.8;
+    this.mesh.material = this.material;
 
     // Light
-    const light = new PointLight("portalLight", Vector3.Zero(), scene);
-    light.parent = orb;
-    light.diffuse = color;
-    light.intensity = lightIntensity;
-    light.range = lightRange;
+    this.light = new PointLight("portalLight", Vector3.Zero(), scene);
+    this.light.parent = this.mesh;
+    this.light.diffuse = this.config.color;
+    this.light.intensity = this.config.lightIntensity;
+    this.light.range = this.config.lightRange;
 
-    // Click interaction
-    orb.actionManager = new ActionManager(scene);
-    orb.actionManager.registerAction(
+    // Interaction
+    this.setupInteraction(targetLevelId);
+
+    // Animation
+    this.setupAnimation();
+
+    // Cleanup hook
+    this.mesh.onDisposeObservable.addOnce(() => this.dispose());
+  }
+
+  private setupInteraction(targetLevelId: string): void {
+    this.mesh.actionManager = new ActionManager(this.scene);
+    this.mesh.actionManager.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
+        if (this.disposed) return;
         LevelManager.getInstance().load(targetLevelId);
         AudioManager.getInstance().play("teleport");
       })
     );
+  }
 
-    // Animation using accumulated time (not Date.now() every frame)
-    const startY = position.y;
-    let time = 0;
+  private setupAnimation(): void {
+    this.renderObserver = this.scene.onBeforeRenderObservable.add(() => {
+      if (this.disposed) return;
 
-    const observer = scene.onBeforeRenderObservable.add(() => {
-      const dt = scene.getEngine().getDeltaTime() * 0.001;
-      time += dt;
+      const dt = this.scene.getEngine().getDeltaTime() * 0.001;
+      this.time += dt;
 
-      orb.rotation.y += rotationSpeed;
-      orb.position.y = startY + Math.sin(time * floatSpeed * 1000) * floatAmplitude;
+      this.mesh.rotation.y += this.config.rotationSpeed;
+      this.mesh.position.y = this.startY + Math.sin(this.time * this.config.floatSpeed) * this.config.floatAmplitude;
     });
+  }
 
-    // Cleanup on dispose
-    orb.onDisposeObservable.addOnce(() => {
-      scene.onBeforeRenderObservable.remove(observer);
-    });
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    // Remove observer
+    if (this.renderObserver) {
+      this.scene.onBeforeRenderObservable.remove(this.renderObserver);
+      this.renderObserver = null;
+    }
+
+    // Dispose resources
+    this.light.dispose();
+    this.material.dispose();
+    this.mesh.actionManager?.dispose();
+    this.mesh.dispose();
   }
 }

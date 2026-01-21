@@ -611,5 +611,17 @@ export function editorLogic() {
       a.click();
       URL.revokeObjectURL(url);
     },
+
+    // ==================== CLEANUP ====================
+
+    destroy() {
+      if (keyboardHandler) {
+        window.removeEventListener("keydown", keyboardHandler);
+        keyboardHandler = null;
+      }
+
+      this.engine?.dispose();
+      this.engine = null;
+    },
   };
 }

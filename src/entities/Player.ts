@@ -1,3 +1,8 @@
+/**
+ * Player - Character controller with physics, animations, and lighting
+ * Features: proper dispose, reusable vectors to minimize GC
+ */
+
 import {
   type AbstractMesh,
   type AnimationGroup,
@@ -13,6 +18,10 @@ import {
 import { ANIMATIONS } from "../hero_anim";
 import { InputManager } from "../managers/InputManager";
 
+const MOVE_SPEED = 5;
+const CAPSULE_HEIGHT = 2;
+const CAPSULE_RADIUS = 0.25;
+
 export class Player {
   readonly mesh: AbstractMesh;
   readonly capsule: AbstractMesh;
@@ -22,15 +31,15 @@ export class Player {
   private readonly anims: Map<string, AnimationGroup>;
   private readonly input: InputManager;
   private readonly camera: ArcRotateCamera;
-  private readonly moveSpeed = 5;
+  private readonly scene: Scene;
 
-  // Reusable vectors to avoid GC
+  // Reusable vectors to avoid GC pressure
   private readonly moveVec = Vector3.Zero();
   private readonly velocityVec = Vector3.Zero();
   private readonly lookVec = Vector3.Zero();
 
-  // Animation state
   private currentAnim: string | null = null;
+  private disposed = false;
 
   constructor(
     mesh: AbstractMesh,
@@ -41,10 +50,15 @@ export class Player {
   ) {
     this.mesh = mesh;
     this.camera = camera;
+    this.scene = scene;
     this.input = InputManager.getInstance();
 
     // Physics capsule
-    this.capsule = MeshBuilder.CreateCapsule("playerCapsule", { height: 2, radius: 0.25 }, scene);
+    this.capsule = MeshBuilder.CreateCapsule(
+      "playerCapsule",
+      { height: CAPSULE_HEIGHT, radius: CAPSULE_RADIUS },
+      scene
+    );
     this.capsule.position.set(0, 1, 0);
     this.capsule.isVisible = false;
 
@@ -85,6 +99,8 @@ export class Player {
   }
 
   update(): void {
+    if (this.disposed) return;
+
     const forward = this.camera.getDirection(Vector3.Forward());
     const right = this.camera.getDirection(Vector3.Right());
     forward.y = 0;
@@ -92,10 +108,9 @@ export class Player {
     forward.normalize();
     right.normalize();
 
-    // Reset move vector
+    // Reset and calculate move direction
     this.moveVec.setAll(0);
 
-    // Input
     const w = this.input.isKeyDown("KeyW");
     const s = this.input.isKeyDown("KeyS");
     const a = this.input.isKeyDown("KeyA");
@@ -111,16 +126,14 @@ export class Player {
 
     if (isMoving) {
       this.moveVec.normalize();
-
-      // Set velocity (reuse vector)
       this.velocityVec.set(
-        this.moveVec.x * this.moveSpeed,
+        this.moveVec.x * MOVE_SPEED,
         currentY,
-        this.moveVec.z * this.moveSpeed
+        this.moveVec.z * MOVE_SPEED
       );
       this.physicsAggregate.body.setLinearVelocity(this.velocityVec);
 
-      // Animation based on primary direction
+      // Select animation based on direction
       const anim = s
         ? ANIMATIONS.Run_Back
         : a
@@ -130,7 +143,6 @@ export class Player {
             : ANIMATIONS.Run;
       this.playAnim(anim);
     } else {
-      // Stop horizontal movement
       this.velocityVec.set(0, currentY, 0);
       this.physicsAggregate.body.setLinearVelocity(this.velocityVec);
       this.playAnim(ANIMATIONS.Idle_Neutral);
@@ -162,5 +174,21 @@ export class Player {
 
   get position(): Vector3 {
     return this.capsule.position;
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    // Stop animations
+    for (const anim of this.anims.values()) {
+      anim.stop();
+    }
+
+    // Dispose resources
+    this.spotLight.dispose();
+    this.physicsAggregate.dispose();
+    this.capsule.dispose();
+    this.mesh.dispose();
   }
 }

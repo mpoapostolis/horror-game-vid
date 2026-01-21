@@ -1,4 +1,3 @@
-import type { Engine } from "../core/Engine";
 import type { BaseLevel } from "../levels/BaseLevel";
 import { DialogueManager } from "./DialogueManager";
 import { InputManager } from "./InputManager";
@@ -11,7 +10,7 @@ export class LevelManager {
 
   private constructor() {}
 
-  static getInstance(_engine?: Engine): LevelManager {
+  static getInstance(): LevelManager {
     return (LevelManager.instance ??= new LevelManager());
   }
 
