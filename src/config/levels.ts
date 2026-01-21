@@ -39,7 +39,8 @@ export interface DialogueLine {
 export interface NPCSpawn {
   type: "npc";
   name?: string; // Editor display name
-  entity: string;
+  entity?: string; // Entity key from ENTITIES config (legacy/shorthand)
+  asset?: string; // Direct asset path (e.g., "/assets/Demon.glb")
   position: [number, number, number];
   rotation?: [number, number, number];
   scale?: number;

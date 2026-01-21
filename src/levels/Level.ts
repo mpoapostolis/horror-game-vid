@@ -2,226 +2,199 @@ import {
   type Mesh,
   Vector3,
   GizmoManager,
-  UtilityLayerRenderer,
   AbstractMesh,
   Color3,
   PhysicsBody,
   PhysicsMotionType,
   PhysicsShapeMesh,
+  type Observer,
 } from "@babylonjs/core";
 import type {
   LevelConfig,
   LevelEffect,
   Trigger,
   TriggerAction,
+  NPCSpawn,
 } from "../config/levels";
-import type { NPC } from "../entities/NPC";
+import { NPC } from "../entities/NPC";
 import type { Portal } from "../entities/Portal";
 import { AudioManager } from "../managers/AudioManager";
 import { DialogueManager } from "../managers/DialogueManager";
 import { BaseLevel } from "./BaseLevel";
 
+interface EntityMetadata {
+  type: "entity";
+  index: number;
+  entityType: "npc" | "portal" | "prop";
+  id?: string;
+}
+
 interface TriggerState {
   triggered: boolean;
 }
 
+type SelectCallback = (type: string, id: number, object: AbstractMesh | null) => void;
+type TransformCallback = (id: number, pos: Vector3, rot?: Vector3, scale?: Vector3) => void;
+
 export class Level extends BaseLevel {
   private levelConfig: LevelConfig;
-  private npcs: Map<string, NPC> = new Map();
-  private portals: Portal[] = [];
+  private npcs: Map<number, NPC> = new Map();
+  private portals: Map<number, Portal> = new Map();
+  private props: Map<number, AbstractMesh> = new Map();
   private triggerStates: Map<Trigger, TriggerState> = new Map();
 
-  // Editor Support
+  // Editor
   private gizmoManager?: GizmoManager;
-  private onObjectSelected?: (
-    type: string,
-    id: string | number,
-    object: any,
-  ) => void;
-  private onTransformChange?: (
-    id: string | number,
-    position: Vector3,
-    rotation?: Vector3,
-    scale?: Vector3,
-  ) => void;
+  private gizmoObservers: Observer<unknown>[] = [];
+  private onObjectSelected?: SelectCallback;
+  private onTransformChange?: TransformCallback;
 
   constructor(config: LevelConfig) {
-    // Build base config, only including defined values
-    const baseConfig: Record<string, unknown> = {
+    super({
       ambientIntensity: config.ambientIntensity,
       clearColor: config.clearColor,
       fogEnabled: config.fogEnabled,
-    };
-
-    if (config.flashlightIntensity !== undefined) {
-      baseConfig.flashlightIntensity = config.flashlightIntensity;
-    }
-    if (config.fogColor !== undefined) {
-      baseConfig.fogColor = config.fogColor;
-    }
-    if (config.fogDensity !== undefined) {
-      baseConfig.fogDensity = config.fogDensity;
-    }
-    if (config.cameraRadius !== undefined) {
-      baseConfig.cameraRadius = config.cameraRadius;
-    }
-    if (config.cameraBeta !== undefined) {
-      baseConfig.cameraBeta = config.cameraBeta;
-    }
-    if (config.pipeline !== undefined) {
-      baseConfig.pipeline = config.pipeline;
-    }
-
-    super(baseConfig);
+      flashlightIntensity: config.flashlightIntensity,
+      fogColor: config.fogColor,
+      fogDensity: config.fogDensity,
+      cameraRadius: config.cameraRadius,
+      cameraBeta: config.cameraBeta,
+      pipeline: config.pipeline,
+    });
     this.levelConfig = config;
   }
 
   protected async onLoad(): Promise<void> {
-    const config = this.levelConfig;
-
-    // Audio
     AudioManager.getInstance().stopAll();
-    if (config.music) {
-      AudioManager.getInstance().play(config.music);
+
+    if (this.levelConfig.music) {
+      AudioManager.getInstance().play(this.levelConfig.music);
     }
 
-    // Load environment
     await this.loadEnvironment();
-
-    // Spawn entities
     await this.spawnEntities();
-
-    // Register dialogues
     this.registerDialogues();
-
-    // Initialize triggers
     this.initTriggers();
   }
 
   private async loadEnvironment(): Promise<void> {
     const env = this.levelConfig.environment;
     const data = await this.assetManager.loadMesh(env.asset, this.scene);
+    const root = data.meshes[0];
 
-    const rootMesh = data.meshes[0];
-    if (rootMesh) {
-      if (env.scale) {
-        rootMesh.scaling.setAll(env.scale);
-      }
-      if (env.position) {
-        rootMesh.position.set(...env.position);
-      }
-      rootMesh.computeWorldMatrix(true);
+    if (root) {
+      if (env.scale) root.scaling.setAll(env.scale);
+      if (env.position) root.position.set(...env.position);
+      root.computeWorldMatrix(true);
     }
 
-    data.meshes.forEach((m) => {
-      m.receiveShadows = true;
-      m.computeWorldMatrix(true);
-      if (m.getTotalVertices() > 0) {
-        this.setupStaticMeshPhysics(m as Mesh);
+    for (const mesh of data.meshes) {
+      mesh.receiveShadows = true;
+      mesh.computeWorldMatrix(true);
+      if (mesh.getTotalVertices() > 0) {
+        this.setupStaticMeshPhysics(mesh as Mesh);
       }
-    });
+    }
   }
 
   private async spawnEntities(): Promise<void> {
-    // Clear existing
-    this.npcs.clear();
-    this.portals = [];
+    this.disposeEntities();
 
-    for (let i = 0; i < this.levelConfig.entities.length; i++) {
-      const spawn = this.levelConfig.entities[i];
+    const entities = this.levelConfig.entities;
+
+    for (let i = 0; i < entities.length; i++) {
+      const spawn = entities[i];
       const position = new Vector3(...spawn.position);
 
-      if (spawn.type === "npc") {
-        const npc = await this.entityFactory.spawnNPC(
-          spawn.entity,
-          position,
-          spawn.scale,
-        );
-        this.npcs.set(spawn.entity, npc);
-
-        // Tag for editor
-        if (npc.mesh) {
-          npc.mesh.metadata = {
-            type: "entity",
-            index: i,
-            entityType: "npc",
-            id: spawn.entity,
-          };
+      try {
+        if (spawn.type === "npc") {
+          await this.spawnNPC(i, spawn, position);
+        } else if (spawn.type === "portal") {
+          this.spawnPortalEntity(i, spawn, position);
+        } else if (spawn.type === "prop") {
+          await this.spawnProp(i, spawn, position);
         }
-      } else if (spawn.type === "portal") {
-        const portal = this.entityFactory.spawnPortal(
-          position,
-          spawn.targetLevel,
-        );
-        this.portals.push(portal);
-        if (!this.portal) {
-          this.portal = portal;
-        }
-        // Tag for editor
-        if (portal.mesh) {
-          portal.mesh.metadata = {
-            type: "entity",
-            index: i,
-            entityType: "portal",
-          };
-        }
-      } else if (spawn.type === "prop") {
-        const data = await this.assetManager.loadMesh(spawn.asset, this.scene);
-        const root = data.meshes[0];
-        if (root) {
-          root.position.copyFrom(position);
-          if (spawn.rotation) {
-            root.rotation = new Vector3(...spawn.rotation);
-          }
-          if (spawn.scaling) {
-            root.scaling = new Vector3(...spawn.scaling);
-          }
-
-          // Tag for editor
-          root.metadata = {
-            type: "entity",
-            index: i,
-            entityType: "prop",
-          };
-
-          // Physics
-          if (spawn.physics?.enabled) {
-            const motionType =
-              spawn.physics.mass > 0
-                ? PhysicsMotionType.DYNAMIC
-                : PhysicsMotionType.STATIC;
-            // Merge meshes for physics if needed, or just root.
-            // Simple approach: Apply to root if it has geometry, or first child.
-            // Best for GLB: Parent to a capsule or box if dynamic?
-            // For now, let's try direct mesh physics on root or children.
-            // Actually, often root is empty __root__.
-
-            // Aggreagte simple physics:
-            const physicsRoot = root; // Simplified
-            const body = new PhysicsBody(
-              physicsRoot,
-              motionType,
-              false,
-              this.scene,
-            );
-            body.setMassProperties({ mass: spawn.physics.mass });
-
-            // Shape
-            let shape;
-            if (spawn.physics.impostor === "box") {
-              // Approximate box
-              // shape = new PhysicsShapeBox(...) // Need bounding info
-            }
-            // Fallback to mesh shape for now for everything or simple mesh impostor
-            const shapeMesh = new PhysicsShapeMesh(
-              physicsRoot as Mesh,
-              this.scene,
-            );
-            body.shape = shapeMesh;
-          }
-        }
+      } catch (error) {
+        console.error(`Failed to spawn entity ${i}:`, error);
       }
     }
+  }
+
+  private async spawnNPC(index: number, spawn: NPCSpawn, position: Vector3): Promise<void> {
+    const npc = await this.entityFactory.spawnNPC({
+      entityKey: spawn.entity,
+      asset: spawn.asset,
+      position,
+      scale: spawn.scale,
+      animations: spawn.animations,
+    });
+
+    this.npcs.set(index, npc);
+    this.setEntityMetadata(npc.mesh, index, "npc", spawn.name || spawn.entity || spawn.asset);
+  }
+
+  private spawnPortalEntity(index: number, spawn: any, position: Vector3): void {
+    const portal = this.entityFactory.spawnPortal(position, spawn.targetLevel);
+    this.portals.set(index, portal);
+
+    if (!this.portal) {
+      this.portal = portal;
+    }
+
+    if (portal.mesh) {
+      this.setEntityMetadata(portal.mesh as AbstractMesh, index, "portal");
+    }
+  }
+
+  private async spawnProp(index: number, spawn: any, position: Vector3): Promise<void> {
+    const data = await this.assetManager.loadMesh(spawn.asset, this.scene);
+    const root = data.meshes[0];
+
+    if (!root) return;
+
+    root.position.copyFrom(position);
+    if (spawn.rotation) root.rotation = new Vector3(...spawn.rotation);
+    if (spawn.scaling) root.scaling = new Vector3(...spawn.scaling);
+
+    this.props.set(index, root);
+    this.setEntityMetadata(root, index, "prop");
+
+    if (spawn.physics?.enabled) {
+      this.setupPropPhysics(root as Mesh, spawn.physics);
+    }
+  }
+
+  private setEntityMetadata(
+    mesh: AbstractMesh,
+    index: number,
+    entityType: EntityMetadata["entityType"],
+    id?: string
+  ): void {
+    mesh.metadata = { type: "entity", index, entityType, id } as EntityMetadata;
+  }
+
+  private setupPropPhysics(mesh: Mesh, physics: any): void {
+    const motionType = physics.mass > 0 ? PhysicsMotionType.DYNAMIC : PhysicsMotionType.STATIC;
+    const body = new PhysicsBody(mesh, motionType, false, this.scene);
+    body.setMassProperties({ mass: physics.mass });
+    body.shape = new PhysicsShapeMesh(mesh, this.scene);
+  }
+
+  private disposeEntities(): void {
+    for (const npc of this.npcs.values()) {
+      npc.dispose();
+    }
+    this.npcs.clear();
+
+    for (const portal of this.portals.values()) {
+      portal.mesh?.dispose();
+    }
+    this.portals.clear();
+
+    for (const prop of this.props.values()) {
+      prop.dispose();
+    }
+    this.props.clear();
   }
 
   private registerDialogues(): void {
@@ -232,6 +205,7 @@ export class Level extends BaseLevel {
   }
 
   private initTriggers(): void {
+    this.triggerStates.clear();
     for (const trigger of this.levelConfig.triggers ?? []) {
       this.triggerStates.set(trigger, { triggered: false });
     }
@@ -247,21 +221,27 @@ export class Level extends BaseLevel {
 
     for (const trigger of this.levelConfig.triggers ?? []) {
       const state = this.triggerStates.get(trigger);
-      if (!state) continue;
-
-      if (trigger.once && state.triggered) continue;
+      if (!state || (trigger.once && state.triggered)) continue;
 
       if (trigger.type === "proximity") {
-        const target = this.npcs.get(trigger.target);
-        if (!target) continue;
+        const targetNpc = this.findNPCByName(trigger.target);
+        if (!targetNpc) continue;
 
-        const dist = Vector3.Distance(this.player.position, target.position);
+        const dist = Vector3.Distance(this.player.position, targetNpc.position);
         if (dist < trigger.radius) {
           state.triggered = true;
           this.executeTriggerActions(trigger.actions);
         }
       }
     }
+  }
+
+  private findNPCByName(name: string): NPC | undefined {
+    for (const npc of this.npcs.values()) {
+      const meta = npc.mesh.metadata as EntityMetadata | undefined;
+      if (meta?.id === name) return npc;
+    }
+    return undefined;
   }
 
   private executeTriggerActions(actions: TriggerAction[]): void {
@@ -291,32 +271,21 @@ export class Level extends BaseLevel {
   private applyEffect(effect: LevelEffect): void {
     switch (effect.type) {
       case "spotlightOverride":
-        if (this.player) {
-          this.player.spotLight.intensity = effect.intensity;
-        }
+        if (this.player) this.player.spotLight.intensity = effect.intensity;
         break;
 
       case "flicker":
         if (effect.target === "flashlight") {
-          if (Math.random() < effect.chance) {
-            this.flashlight.intensity =
-              effect.lowRange[0] +
-              Math.random() * (effect.lowRange[1] - effect.lowRange[0]);
-          } else {
-            this.flashlight.intensity =
-              effect.highRange[0] +
-              Math.random() * (effect.highRange[1] - effect.highRange[0]);
-          }
+          const range = Math.random() < effect.chance ? effect.lowRange : effect.highRange;
+          this.flashlight.intensity = range[0] + Math.random() * (range[1] - range[0]);
         }
         break;
 
       case "heartbeatVignette":
         if (this.pipeline) {
           const time = Date.now() * effect.speed;
-          const heartbeat =
-            (Math.sin(time) + Math.sin(time * 2) + Math.sin(time * 0.5)) / 3;
-          this.pipeline.imageProcessing.vignetteWeight =
-            effect.baseWeight + heartbeat * effect.amplitude;
+          const heartbeat = (Math.sin(time) + Math.sin(time * 2) + Math.sin(time * 0.5)) / 3;
+          this.pipeline.imageProcessing.vignetteWeight = effect.baseWeight + heartbeat * effect.amplitude;
         }
         break;
 
@@ -329,16 +298,10 @@ export class Level extends BaseLevel {
 
   public start(): void {}
 
-  public enableEditorMode(
-    onSelect: (type: string, id: string | number, object: any) => void,
-    onChange: (
-      id: string | number,
-      position: Vector3,
-      rotation?: Vector3,
-      scale?: Vector3,
-    ) => void,
-  ): void {
-    if (this.gizmoManager) return; // Already enabled
+  // ==================== EDITOR API ====================
+
+  public enableEditorMode(onSelect: SelectCallback, onChange: TransformCallback): void {
+    if (this.gizmoManager) return;
 
     this.onObjectSelected = onSelect;
     this.onTransformChange = onChange;
@@ -350,144 +313,95 @@ export class Level extends BaseLevel {
     this.gizmoManager.usePointerToAttachGizmos = false;
     this.gizmoManager.clearGizmoOnEmptyPointerEvent = false;
 
-    // Custom selection logic
-    this.scene.onPointerDown = (evt, pickResult) => {
-      // Check if we clicked on a gizmo (Utility Layer)
-      const isGizmoHit =
-        this.gizmoManager?.gizmos.positionGizmo?.xGizmo.isHovered ||
-        this.gizmoManager?.gizmos.positionGizmo?.yGizmo.isHovered ||
-        this.gizmoManager?.gizmos.positionGizmo?.zGizmo.isHovered ||
-        this.gizmoManager?.gizmos.rotationGizmo?.xGizmo.isHovered ||
-        this.gizmoManager?.gizmos.rotationGizmo?.yGizmo.isHovered ||
-        this.gizmoManager?.gizmos.rotationGizmo?.zGizmo.isHovered ||
-        this.gizmoManager?.gizmos.scaleGizmo?.xGizmo.isHovered ||
-        this.gizmoManager?.gizmos.scaleGizmo?.yGizmo.isHovered ||
-        this.gizmoManager?.gizmos.scaleGizmo?.zGizmo.isHovered;
+    this.scene.onPointerDown = (evt, pickResult) => this.handleEditorClick(evt, pickResult);
+    this.setupGizmoObservers();
+  }
 
-      if (isGizmoHit) return;
+  private handleEditorClick(evt: any, pickResult: any): void {
+    if (this.isGizmoHovered()) return;
 
-      if (pickResult.hit && pickResult.pickedMesh) {
-        let selectedMesh = pickResult.pickedMesh;
-
-        // Walk up to find the root entity
-        while (selectedMesh.parent && (selectedMesh.parent as AbstractMesh)) {
-          if (selectedMesh.metadata?.type) break;
-          selectedMesh = selectedMesh.parent as AbstractMesh;
-        }
-
-        if (selectedMesh.metadata?.type === "entity") {
-          this.gizmoManager?.attachToMesh(selectedMesh);
-          this.onObjectSelected?.(
-            "entity",
-            selectedMesh.metadata.index,
-            selectedMesh,
-          );
-        } else {
-          // We clicked a non-entity mesh (like the ground or a wall part of env)
-          // Keep selection if it was an entity, unless we explicitly want to deselect?
-          // For now, let's DESELECT if we click the environment.
-          this.gizmoManager?.attachToMesh(null);
-          this.onObjectSelected?.("none", -1, null);
-        }
-      } else if (evt.button === 0) {
-        // Clicked skybox/void
-        this.gizmoManager?.attachToMesh(null);
-        this.onObjectSelected?.("none", -1, null);
+    if (pickResult.hit && pickResult.pickedMesh) {
+      const entity = this.findEntityMesh(pickResult.pickedMesh);
+      if (entity) {
+        this.gizmoManager?.attachToMesh(entity);
+        const meta = entity.metadata as EntityMetadata;
+        this.onObjectSelected?.("entity", meta.index, entity);
+        return;
       }
-    };
+    }
 
-    // Drag End Observer
+    this.gizmoManager?.attachToMesh(null);
+    this.onObjectSelected?.("none", -1, null);
+  }
+
+  private isGizmoHovered(): boolean {
+    const gm = this.gizmoManager;
+    if (!gm) return false;
+
+    return !!(
+      gm.gizmos.positionGizmo?.xGizmo.isHovered ||
+      gm.gizmos.positionGizmo?.yGizmo.isHovered ||
+      gm.gizmos.positionGizmo?.zGizmo.isHovered ||
+      gm.gizmos.rotationGizmo?.xGizmo.isHovered ||
+      gm.gizmos.rotationGizmo?.yGizmo.isHovered ||
+      gm.gizmos.rotationGizmo?.zGizmo.isHovered ||
+      gm.gizmos.scaleGizmo?.xGizmo.isHovered ||
+      gm.gizmos.scaleGizmo?.yGizmo.isHovered ||
+      gm.gizmos.scaleGizmo?.zGizmo.isHovered
+    );
+  }
+
+  private findEntityMesh(pickedMesh: AbstractMesh): AbstractMesh | null {
+    let mesh: AbstractMesh | null = pickedMesh;
+
+    while (mesh) {
+      if ((mesh.metadata as EntityMetadata)?.type === "entity") {
+        return mesh;
+      }
+      mesh = mesh.parent as AbstractMesh | null;
+    }
+
+    return null;
+  }
+
+  private setupGizmoObservers(): void {
+    const gm = this.gizmoManager;
+    if (!gm) return;
+
     const updateTransform = () => {
-      const mesh = this.gizmoManager?.attachedMesh;
-      if (mesh && mesh.metadata?.type === "entity") {
-        this.onTransformChange?.(
-          mesh.metadata.index,
-          mesh.position.clone(),
-          mesh.rotation.clone(),
-          mesh.scaling.clone(),
-        );
-      }
+      const mesh = gm.attachedMesh;
+      if (!mesh || (mesh.metadata as EntityMetadata)?.type !== "entity") return;
+
+      const meta = mesh.metadata as EntityMetadata;
+      this.onTransformChange?.(
+        meta.index,
+        mesh.position.clone(),
+        mesh.rotation.clone(),
+        mesh.scaling.clone()
+      );
     };
 
-    // Add drag end observers for all gizmos
-    this.gizmoManager.gizmos.positionGizmo?.onDragEndObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.rotationGizmo?.onDragEndObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.scaleGizmo?.onDragEndObservable.add(
-      updateTransform,
-    );
+    // Collect observers for cleanup
+    const gizmos = [
+      gm.gizmos.positionGizmo,
+      gm.gizmos.rotationGizmo,
+      gm.gizmos.scaleGizmo,
+    ];
 
-    // Also observe during drag for smoother updates
-    this.gizmoManager.gizmos.positionGizmo?.xGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.positionGizmo?.yGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.positionGizmo?.zGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.rotationGizmo?.xGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.rotationGizmo?.yGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.rotationGizmo?.zGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.scaleGizmo?.xGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.scaleGizmo?.yGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-    this.gizmoManager.gizmos.scaleGizmo?.zGizmo.dragBehavior.onDragObservable.add(
-      updateTransform,
-    );
-  }
+    for (const gizmo of gizmos) {
+      if (!gizmo) continue;
 
-  public override hotUpdate(config: LevelConfig): void {
-    super.hotUpdate(config);
-    this.levelConfig = config;
-  }
+      const endObs = gizmo.onDragEndObservable.add(updateTransform);
+      if (endObs) this.gizmoObservers.push(endObs);
 
-  // Optimized method for Editor Dragging
-  public updateEntityTransform(
-    index: number,
-    position: number[],
-    rotation?: number[],
-    scale?: number[],
-  ): void {
-    // Find the mesh with this index
-    const mesh = this.scene.meshes.find(
-      (m) =>
-        m.metadata &&
-        m.metadata.type === "entity" &&
-        m.metadata.index === index,
-    );
-
-    if (mesh) {
-      mesh.position.set(position[0], position[1], position[2]);
-      if (rotation) {
-        mesh.rotation = new Vector3(rotation[0], rotation[1], rotation[2]);
-      }
-      if (scale) {
-        mesh.scaling = new Vector3(scale[0], scale[1], scale[2]);
-      }
-
-      // Update Physics Body if exists
-      if (mesh.physicsBody) {
-        mesh.physicsBody.setTargetTransform(
-          mesh.position,
-          mesh.rotationQuaternion || mesh.rotation.toQuaternion(),
-        );
+      for (const axis of [gizmo.xGizmo, gizmo.yGizmo, gizmo.zGizmo]) {
+        if (!axis) continue;
+        const dragObs = axis.dragBehavior.onDragObservable.add(updateTransform);
+        if (dragObs) this.gizmoObservers.push(dragObs);
       }
     }
   }
+
   public setGizmoMode(mode: "position" | "rotation" | "scale"): void {
     if (!this.gizmoManager) return;
     this.gizmoManager.positionGizmoEnabled = mode === "position";
@@ -495,43 +409,86 @@ export class Level extends BaseLevel {
     this.gizmoManager.scaleGizmoEnabled = mode === "scale";
   }
 
-  public getEntityAnimationGroups(index: number): string[] {
-    const npc = Array.from(this.npcs.values()).find(
-      (n) => n.mesh && n.mesh.metadata && n.mesh.metadata.index === index,
-    );
-    if (npc) {
-      return npc.anims.map((a) => a.name);
+  public updateEntityTransform(index: number, position: number[], rotation?: number[], scale?: number[]): void {
+    const mesh = this.findMeshByIndex(index);
+    if (!mesh) return;
+
+    mesh.position.set(position[0], position[1], position[2]);
+    if (rotation) mesh.rotation = new Vector3(rotation[0], rotation[1], rotation[2]);
+    if (scale) mesh.scaling = new Vector3(scale[0], scale[1], scale[2]);
+
+    if (mesh.physicsBody) {
+      mesh.physicsBody.setTargetTransform(
+        mesh.position,
+        mesh.rotationQuaternion || mesh.rotation.toQuaternion()
+      );
     }
-    return [];
   }
 
-  public playEntityAnimation(index: number, animationName: string): void {
-    console.log(
-      `[Level] playEntityAnimation called for index ${index}, anim: ${animationName}`,
+  private findMeshByIndex(index: number): AbstractMesh | undefined {
+    return this.scene.meshes.find(
+      (m) => (m.metadata as EntityMetadata)?.type === "entity" && (m.metadata as EntityMetadata).index === index
     );
-    const npc = Array.from(this.npcs.values()).find(
-      (n) => n.mesh && n.mesh.metadata && n.mesh.metadata.index === index,
-    );
-    if (npc) {
-      console.log(`[Level] NPC found: ${npc.mesh?.name}`);
-      if (npc.anims) {
-        // Stop all first
-        npc.anims.forEach((a) => a.stop());
-        const anim = npc.anims.find((a) => a.name === animationName);
-        if (anim) {
-          console.log(`[Level] Starting animation: ${anim.name}`);
-          anim.start(true, 1.0, anim.from, anim.to, false);
-        } else {
-          console.warn(
-            `[Level] Animation not found: ${animationName}. Available:`,
-            npc.anims.map((a) => a.name),
-          );
-        }
-      } else {
-        console.warn(`[Level] NPC has no animations`);
-      }
-    } else {
-      console.error(`[Level] NPC not found for index ${index}`);
+  }
+
+  public getEntityAnimationGroups(index: number): string[] {
+    const npc = this.npcs.get(index);
+    return npc?.getAnimationNames() ?? [];
+  }
+
+  public playEntityAnimation(index: number, animationName: string): boolean {
+    const npc = this.npcs.get(index);
+    if (!npc) {
+      console.warn(`[Level] NPC not found for index ${index}`);
+      return false;
     }
+    return npc.playAnimation(animationName);
+  }
+
+  public async swapNPCModel(index: number, assetPath: string, scale?: number): Promise<string[]> {
+    // Dispose old NPC
+    const oldNpc = this.npcs.get(index);
+    if (oldNpc) {
+      oldNpc.dispose();
+      this.npcs.delete(index);
+    }
+
+    // Get position from config
+    const spawn = this.levelConfig.entities[index];
+    const position = spawn?.position ? new Vector3(...spawn.position) : Vector3.Zero();
+
+    // Spawn new NPC
+    const newNpc = await this.entityFactory.spawnNPC({
+      asset: assetPath,
+      position,
+      scale,
+      animations: spawn?.animations,
+    });
+
+    this.npcs.set(index, newNpc);
+    this.setEntityMetadata(newNpc.mesh, index, "npc", `npc_${index}`);
+
+    return newNpc.getAnimationNames();
+  }
+
+  public override hotUpdate(config: LevelConfig): void {
+    super.hotUpdate(config);
+    this.levelConfig = config;
+  }
+
+  public override dispose(): void {
+    // Clean up gizmo observers
+    for (const obs of this.gizmoObservers) {
+      obs.remove();
+    }
+    this.gizmoObservers = [];
+
+    this.gizmoManager?.dispose();
+    this.gizmoManager = undefined;
+
+    this.disposeEntities();
+    this.triggerStates.clear();
+
+    super.dispose();
   }
 }

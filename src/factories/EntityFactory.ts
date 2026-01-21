@@ -1,58 +1,89 @@
 import { type Scene, type ShadowGenerator, Vector3 } from "@babylonjs/core";
-import type { NPCConfig, PortalSpawnConfig, SpawnConfig } from "../config/entities";
-import { ENTITIES, isPortalSpawn } from "../config/entities";
-import { NPC } from "../entities/NPC";
+import { ENTITIES } from "../config/entities";
+import type { NPCConfig } from "../config/entities";
+import { NPC, type NPCAnimations } from "../entities/NPC";
 import { Portal } from "../entities/Portal";
 import type { AssetManager } from "../managers/AssetManager";
-import { DialogueManager } from "../managers/DialogueManager";
+
+export interface SpawnNPCOptions {
+  entityKey?: string;
+  asset?: string;
+  position: Vector3;
+  scale?: number;
+  animations?: NPCAnimations;
+}
+
+const DEFAULT_NPC_CONFIG: Omit<NPCConfig, "asset"> = {
+  type: "npc",
+  scale: 1,
+  idleAnimation: ["Idle", "idle"],
+  castShadow: true,
+};
 
 export class EntityFactory {
-  private assetManager: AssetManager;
-  private shadowGenerator: ShadowGenerator;
-  private scene: Scene;
+  private readonly scene: Scene;
+  private readonly shadowGenerator: ShadowGenerator;
+  private readonly assetManager: AssetManager;
 
-  constructor(scene: Scene, shadowGenerator: ShadowGenerator, assetManager: AssetManager) {
+  constructor(
+    scene: Scene,
+    shadowGenerator: ShadowGenerator,
+    assetManager: AssetManager
+  ) {
     this.scene = scene;
     this.shadowGenerator = shadowGenerator;
     this.assetManager = assetManager;
   }
 
-  async spawnNPC(entityKey: string, position: Vector3, scaleOverride?: number): Promise<NPC> {
-    const config = ENTITIES[entityKey];
-    if (!config || config.type !== "npc") {
-      throw new Error(`Unknown NPC entity: ${entityKey}`);
+  async spawnNPC(options: SpawnNPCOptions): Promise<NPC> {
+    const { position, scale, animations } = options;
+    const config = this.resolveNPCConfig(options);
+
+    const data = await this.assetManager.loadMesh(config.asset, this.scene);
+
+    return new NPC(data.meshes, data.animationGroups, this.shadowGenerator, position, {
+      scale: scale ?? config.scale,
+      castShadow: config.castShadow,
+      idleAnimation: config.idleAnimation,
+      animations,
+    });
+  }
+
+  private resolveNPCConfig(options: SpawnNPCOptions): NPCConfig {
+    // Try entity key lookup (case-insensitive)
+    if (options.entityKey) {
+      const key = this.findEntityKey(options.entityKey);
+      if (key) {
+        const config = ENTITIES[key];
+        if (config?.type === "npc") {
+          return config;
+        }
+      }
     }
 
-    const npcConfig = config as NPCConfig;
-    const data = await this.assetManager.loadMesh(npcConfig.asset, this.scene);
+    // Use direct asset path
+    if (options.asset) {
+      const assetPath = this.normalizeAssetPath(options.asset);
+      return { ...DEFAULT_NPC_CONFIG, asset: assetPath };
+    }
 
-    return new NPC(
-      data.meshes,
-      data.animationGroups,
-      this.shadowGenerator,
-      position,
-      npcConfig,
-      scaleOverride
+    throw new Error(
+      `Invalid NPC spawn options: provide either entityKey or asset. Got: ${JSON.stringify(options)}`
     );
+  }
+
+  private findEntityKey(key: string): string | undefined {
+    const lowerKey = key.toLowerCase();
+    return Object.keys(ENTITIES).find((k) => k.toLowerCase() === lowerKey);
+  }
+
+  private normalizeAssetPath(path: string): string {
+    if (path.startsWith("/assets/")) return path;
+    if (path.startsWith("/")) return path;
+    return `/assets/${path}`;
   }
 
   spawnPortal(position: Vector3, targetLevel: string): Portal {
     return new Portal(this.scene, position, targetLevel);
-  }
-
-  async spawn(config: SpawnConfig | PortalSpawnConfig): Promise<NPC | Portal> {
-    const position = new Vector3(...config.position);
-
-    if (isPortalSpawn(config)) {
-      return this.spawnPortal(position, config.targetLevel);
-    }
-
-    const npc = await this.spawnNPC(config.entity, position, config.scale);
-
-    if (config.dialogue) {
-      DialogueManager.getInstance().register(config.dialogue);
-    }
-
-    return npc;
   }
 }

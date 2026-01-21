@@ -519,12 +519,15 @@
               <div class="flex-1 flex gap-1">
                 <input
                   type="text"
-                  x-model="config.entities[selectedEntityIdx].entity"
+                  :value="config.entities[selectedEntityIdx].asset || config.entities[selectedEntityIdx].entity || ''"
+                  @input="config.entities[selectedEntityIdx].asset = $event.target.value; delete config.entities[selectedEntityIdx].entity"
                   class="blender-input w-full truncate"
+                  readonly
                 />
                 <button
                   @click="openAssetBrowser(selectedEntityIdx, 'entity')"
                   class="px-2 bg-[var(--bg-input)] hover:bg-[var(--bg-input-hover)] border border-[var(--border-light)] rounded select-none text-[10px]"
+                  title="Select Model"
                   >📂</button
                 >
               </div>

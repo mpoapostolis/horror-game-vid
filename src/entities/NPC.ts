@@ -4,71 +4,141 @@ import {
   type ShadowGenerator,
   Vector3,
 } from "@babylonjs/core";
-import type { NPCConfig } from "../config/entities";
+
+export interface NPCAnimations {
+  idle?: string;
+  interact?: string;
+}
+
+export interface NPCOptions {
+  scale?: number;
+  castShadow?: boolean;
+  idleAnimation?: string | string[];
+  animations?: NPCAnimations;
+}
+
+const DEFAULT_IDLE_PATTERNS = ["idle", "Idle", "CharacterArmature|Idle"];
 
 export class NPC {
-  public mesh: AbstractMesh;
-  public anims: AnimationGroup[];
+  public readonly mesh: AbstractMesh;
+  public readonly anims: AnimationGroup[];
+  private disposed = false;
 
   constructor(
     meshes: AbstractMesh[],
     animationGroups: AnimationGroup[],
     shadowGenerator: ShadowGenerator,
     position: Vector3,
-    config: NPCConfig,
-    scaleOverride?: number,
+    options: NPCOptions = {},
   ) {
-    this.mesh = meshes[0]!;
+    const root = meshes[0];
+    if (!root) {
+      throw new Error("NPC requires at least one mesh");
+    }
+
+    this.mesh = root;
     this.anims = animationGroups;
 
-    const scale = scaleOverride ?? config.scale;
+    // Apply transform
+    const scale = options.scale ?? 1;
     this.mesh.position = position;
-    this.mesh.scaling = new Vector3(scale, scale, scale);
+    this.mesh.scaling.setAll(scale);
 
-    if (config.castShadow) {
-      meshes.forEach((m) => shadowGenerator.addShadowCaster(m));
+    // Setup shadows
+    if (options.castShadow !== false) {
+      for (const mesh of meshes) {
+        shadowGenerator.addShadowCaster(mesh);
+      }
     }
 
-    animationGroups.forEach((a) => a.stop());
+    // Stop all animations first
+    this.stopAllAnimations();
 
-    // Check for override in spawn config (cast to any or extend interface)
-    // The config passed here might be the merged one or just NPCConfig.
-    // If we want to support the per-instance overrides from levels.ts, we need to handle it.
-    // Assuming 'config' here might have extra props or we should look at a different arg?
-    // In Level.ts: await this.entityFactory.spawnNPC(spawn.entity, position, spawn.scale);
-    // It doesn't pass the full spawn object! We need to change Level.ts to pass animations.
-
-    // For now, let's assume Level.ts will be updated to pass these options or merge them.
-    // Let's use the 'idleAnimation' from config if available, OR the 'animations.idle' from the extended config.
-
-    const spawnConfig = config as any;
-    const idleName = spawnConfig.animations?.idle || config.idleAnimation;
-
-    const idle = this.findIdleAnimation(animationGroups, idleName);
-    if (idle) idle.play(true);
+    // Play idle animation
+    const idleAnim = this.findAnimation(
+      options.animations?.idle || options.idleAnimation
+    );
+    idleAnim?.play(true);
   }
 
-  private findIdleAnimation(
-    animationGroups: AnimationGroup[],
-    idleAnimation: string | string[],
+  private findAnimation(
+    animationName?: string | string[]
   ): AnimationGroup | undefined {
-    if (Array.isArray(idleAnimation)) {
-      return animationGroups.find((a) =>
-        idleAnimation.some((name) => a.name.includes(name)),
-      );
+    if (!animationName) {
+      return this.findIdleByPattern();
     }
-    return animationGroups.find((a) => a.name === idleAnimation);
+
+    const names = Array.isArray(animationName) ? animationName : [animationName];
+
+    // Exact match first
+    for (const name of names) {
+      const exact = this.anims.find((a) => a.name === name);
+      if (exact) return exact;
+    }
+
+    // Partial match
+    for (const name of names) {
+      const partial = this.anims.find((a) =>
+        a.name.toLowerCase().includes(name.toLowerCase())
+      );
+      if (partial) return partial;
+    }
+
+    return this.findIdleByPattern();
+  }
+
+  private findIdleByPattern(): AnimationGroup | undefined {
+    for (const pattern of DEFAULT_IDLE_PATTERNS) {
+      const anim = this.anims.find((a) =>
+        a.name.toLowerCase().includes(pattern.toLowerCase())
+      );
+      if (anim) return anim;
+    }
+    return this.anims[0];
   }
 
   public get position(): Vector3 {
     return this.mesh.position;
   }
 
-  public playAnimation(name: string, loop = true): void {
-    const anim = this.anims.find((a) => a.name.includes(name));
-    if (anim) {
-      this.anims.forEach((a) => a.stop());
-      anim.play(loop);
+  public set position(value: Vector3) {
+    this.mesh.position = value;
+  }
+
+  public getAnimationNames(): string[] {
+    return this.anims.map((a) => a.name);
+  }
+
+  public playAnimation(name: string, loop = true): boolean {
+    if (this.disposed) return false;
+
+    const anim = this.anims.find(
+      (a) => a.name === name || a.name.includes(name)
+    );
+
+    if (!anim) return false;
+
+    this.stopAllAnimations();
+    anim.start(true, 1.0, anim.from, anim.to, loop);
+    return true;
+  }
+
+  public stopAllAnimations(): void {
+    for (const anim of this.anims) {
+      anim.stop();
     }
+  }
+
+  public dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    this.stopAllAnimations();
+
+    for (const anim of this.anims) {
+      anim.dispose();
+    }
+
+    this.mesh.dispose(false, true);
   }
 }
