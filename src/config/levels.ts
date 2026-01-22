@@ -55,6 +55,7 @@ export interface NPCSpawn {
     idle?: string;
     interact?: string;
   };
+  questGraph?: Record<string, any>; // Stores LiteGraph.js serialized data
 }
 
 export interface PortalSpawn {

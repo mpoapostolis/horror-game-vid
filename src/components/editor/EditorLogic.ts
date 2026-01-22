@@ -2,7 +2,14 @@ import { Engine } from "../../core/Engine";
 import { LevelManager } from "../../managers/LevelManager";
 import { LevelStore, type LevelMeta } from "../../managers/LevelStore";
 import { Level } from "../../levels/Level";
-import { DEFAULT_CONFIG, type LevelConfig, type EntitySpawn, type NPCSpawn, type PropSpawn, type PortalSpawn } from "../../config/levels";
+import {
+  DEFAULT_CONFIG,
+  type LevelConfig,
+  type EntitySpawn,
+  type NPCSpawn,
+  type PropSpawn,
+  type PortalSpawn,
+} from "../../config/levels";
 import { ENTITIES } from "../../config/entities";
 import type { Vector3 } from "@babylonjs/core";
 
@@ -39,6 +46,7 @@ interface EditorState {
   showAssetModal: boolean;
   showLevelModal: boolean;
   showNewLevelModal: boolean;
+  showQuestEditor: boolean;
   newLevelName: string;
   searchQuery: string;
   outlinerSearch: string;
@@ -111,7 +119,11 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 
 function rgbToHex(color: number[]): string {
   if (!color) return "#000000";
-  const [r, g, b] = color.map((c) => Math.round(c * 255).toString(16).padStart(2, "0"));
+  const [r, g, b] = color.map((c) =>
+    Math.round(c * 255)
+      .toString(16)
+      .padStart(2, "0"),
+  );
   return `#${r}${g}${b}`;
 }
 
@@ -134,6 +146,7 @@ export function editorLogic() {
     showAssetModal: false,
     showLevelModal: false,
     showNewLevelModal: false,
+    showQuestEditor: false,
     newLevelName: "",
     searchQuery: "",
     outlinerSearch: "",
@@ -168,7 +181,10 @@ export function editorLogic() {
     // ==================== COMPUTED ====================
 
     get filteredAssets() {
-      const source = this.selectingAssetFor?.field === "music" ? this.availableMusic : this.availableAssets;
+      const source =
+        this.selectingAssetFor?.field === "music"
+          ? this.availableMusic
+          : this.availableAssets;
       if (!this.searchQuery) return source;
       const query = this.searchQuery.toLowerCase();
       return source.filter((a: string) => a.toLowerCase().includes(query));
@@ -177,7 +193,9 @@ export function editorLogic() {
     // ==================== LIFECYCLE ====================
 
     async init() {
-      const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
+      const canvas = document.getElementById(
+        "game-canvas",
+      ) as HTMLCanvasElement;
       if (!canvas) return;
 
       this.engine = Engine.getInstance(canvas);
@@ -332,7 +350,8 @@ export function editorLogic() {
         if (lvl instanceof Level) {
           lvl.enableEditorMode(
             (type, id) => this.onObjectSelected(type, id),
-            (id, pos, rot, scale) => this.onTransformChange(id, pos, rot, scale)
+            (id, pos, rot, scale) =>
+              this.onTransformChange(id, pos, rot, scale),
           );
           lvl.setGizmoMode(this.transformMode);
 
@@ -443,7 +462,9 @@ export function editorLogic() {
     // ==================== ASSET BROWSER ====================
 
     openAssetBrowser(forEntityIdx?: number | null, field?: AssetField) {
-      this.selectingAssetFor = field ? { index: forEntityIdx ?? null, field } : null;
+      this.selectingAssetFor = field
+        ? { index: forEntityIdx ?? null, field }
+        : null;
       this.showAssetModal = true;
     },
 
@@ -537,7 +558,12 @@ export function editorLogic() {
       }
     },
 
-    onTransformChange(id: number, pos: Vector3, rot?: Vector3, scale?: Vector3) {
+    onTransformChange(
+      id: number,
+      pos: Vector3,
+      rot?: Vector3,
+      scale?: Vector3,
+    ) {
       const entity = this.config.entities[id];
       if (!entity || this.selectedEntityIdx !== id) return;
 
@@ -591,7 +617,7 @@ export function editorLogic() {
         this.selectedEntityIdx,
         entity.position,
         entity.rotation || [0, 0, 0],
-        scale
+        scale,
       );
     },
 
@@ -603,7 +629,8 @@ export function editorLogic() {
 
     getEntityScale(entity: EntitySpawn): number {
       if (isPropSpawn(entity) && entity.scaling) return entity.scaling[0] || 1;
-      if (isNPCSpawn(entity) && typeof entity.scale === "number") return entity.scale;
+      if (isNPCSpawn(entity) && typeof entity.scale === "number")
+        return entity.scale;
       return 1;
     },
 
@@ -675,6 +702,28 @@ export function editorLogic() {
       this.config.entities[entIdx].successDialogue?.splice(diagIdx, 1);
     },
 
+    // ==================== QUEST EDITOR ====================
+
+    openQuestEditor(idx: number) {
+      this.selectedEntityIdx = idx;
+      this.showQuestEditor = true;
+    },
+
+    closeQuestEditor() {
+      this.showQuestEditor = false;
+    },
+
+    saveQuestGraph(data: any) {
+      if (this.selectedEntityIdx === -1) return;
+
+      const entity = this.config.entities[this.selectedEntityIdx];
+      if (entity && isNPCSpawn(entity)) {
+        entity.questGraph = data;
+        this.markDirty();
+        console.log("Saved Quest Graph for NPC:", entity.name, data);
+      }
+    },
+
     // ==================== UI HELPERS ====================
 
     getIcon(type: string): string {
@@ -701,7 +750,8 @@ export function editorLogic() {
 
     getModelDisplayName(entity: EntitySpawn | null): string {
       if (!entity) return "";
-      if (isNPCSpawn(entity)) return extractAssetName(entity.asset || entity.entity || "");
+      if (isNPCSpawn(entity))
+        return extractAssetName(entity.asset || entity.entity || "");
       if (isPropSpawn(entity)) return extractAssetName(entity.asset);
       return "";
     },
@@ -715,7 +765,13 @@ export function editorLogic() {
     camelToTitle,
 
     getPipelineRange(setting: string) {
-      return PIPELINE_RANGES[setting as keyof typeof PIPELINE_RANGES] || { min: 0, max: 100, step: 1 };
+      return (
+        PIPELINE_RANGES[setting as keyof typeof PIPELINE_RANGES] || {
+          min: 0,
+          max: 100,
+          step: 1,
+        }
+      );
     },
 
     // ==================== IMPORT/EXPORT ====================
@@ -727,7 +783,9 @@ export function editorLogic() {
     },
 
     downloadJson() {
-      const blob = new Blob([JSON.stringify(this.config, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(this.config, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

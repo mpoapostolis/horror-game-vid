@@ -1,15 +1,19 @@
+---
+import QuestGraphEditor from "./QuestGraphEditor.astro";
+---
+
 <main
   class="flex-1 relative flex flex-col gap-0 overflow-hidden bg-[var(--bg-app)]"
 >
   <!-- Toolbar -->
   <div
-    class="h-9 bg-[var(--bg-header)] border-b border-[var(--border-dark)] flex items-center px-3 justify-between select-none"
+    x-show="!showQuestEditor"
+    class="h-10 bg-[var(--bg-header)] border-b border-[var(--border-dark)] flex items-center px-4 justify-between select-none shrink-0 gap-4"
   >
-    <!-- Left: Modes / Levels -->
-    <div class="flex items-center gap-3">
-      <!-- Level Selector -->
+    <!-- Left: Scene Management -->
+    <div class="flex items-center gap-2 flex-1">
       <div
-        class="flex items-center gap-1 bg-[var(--bg-input)] rounded px-2 py-0.5 border border-[var(--border-light)]"
+        class="flex items-center gap-1 bg-[var(--bg-input)] rounded px-2 py-1 border border-[var(--border-light)] min-w-[160px]"
       >
         <span
           class="text-[10px] text-[var(--text-muted)] font-bold tracking-wider"
@@ -18,34 +22,36 @@
         <select
           x-model="currentLevelId"
           @change="loadLevel(currentLevelId)"
-          class="bg-transparent text-[11px] text-[var(--text-main)] outline-none border-none cursor-pointer min-w-[100px]"
+          class="bg-transparent text-xs text-[var(--text-main)] outline-none border-none cursor-pointer flex-1"
         >
           <template x-for="level in levelList" :key="level.id">
-            <option :value="level.id" x-text="level.name + (level.isBuiltIn ? '' : ' *')"></option>
+            <option
+              :value="level.id"
+              x-text="level.name + (level.isBuiltIn ? '' : ' *')"></option>
           </template>
         </select>
       </div>
 
-      <!-- Level Actions -->
-      <div class="flex items-center gap-1">
+      <div
+        class="flex items-center rounded overflow-hidden border border-[var(--border-light)] opacity-80 hover:opacity-100 transition-opacity"
+      >
         <button
           @click="showNewLevelModal = true"
-          class="blender-btn !px-2 !py-0.5 !text-[10px] bg-green-900/30 hover:bg-green-800/50 border-green-800"
+          class="px-2 py-1 bg-[var(--bg-panel)] hover:bg-[var(--bg-input-hover)] text-[10px] text-[var(--text-main)] border-r border-[var(--border-light)] transition-colors"
           title="Create New Scene"
         >
-          <span>+</span>
-          <span>New</span>
+          <span>＋ New</span>
         </button>
         <button
           @click="duplicateLevel(currentLevelId)"
-          class="blender-btn !px-2 !py-0.5 !text-[10px]"
-          title="Duplicate Current Scene"
+          class="px-2 py-1 bg-[var(--bg-panel)] hover:bg-[var(--bg-input-hover)] text-[10px] text-[var(--text-main)] border-r border-[var(--border-light)] transition-colors"
+          title="Duplicate"
         >
           <span>📋</span>
         </button>
         <button
           @click="deleteLevel(currentLevelId)"
-          class="blender-btn !px-2 !py-0.5 !text-[10px] hover:bg-red-900/50 hover:border-red-800"
+          class="px-2 py-1 bg-[var(--bg-panel)] hover:bg-red-900/50 hover:text-red-200 text-[10px] text-[var(--text-main)] transition-colors"
           :class="isBuiltInLevel(currentLevelId) ? 'opacity-30 cursor-not-allowed' : ''"
           :disabled="isBuiltInLevel(currentLevelId)"
           title="Delete Scene"
@@ -53,88 +59,90 @@
           <span>🗑️</span>
         </button>
       </div>
-
-      <div class="w-px h-4 bg-[var(--border-light)]"></div>
-
-      <!-- Transform Tools -->
-      <div
-        class="flex bg-[var(--bg-input)] rounded p-0.5 border border-[var(--border-light)] gap-0.5"
-      >
-        <button
-          @click="setTransformMode('position')"
-          class="px-3 py-1 rounded-[2px] text-[10px] font-bold transition-all relative overflow-hidden"
-          :class="transformMode === 'position' ? 'bg-[#3b82f6] text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-main)]'"
-          title="Move Tool (G)"
-        >
-          MOVE
-        </button>
-        <button
-          @click="setTransformMode('rotation')"
-          class="px-3 py-1 rounded-[2px] text-[10px] font-bold transition-all relative overflow-hidden"
-          :class="transformMode === 'rotation' ? 'bg-[#3b82f6] text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-main)]'"
-          title="Rotate Tool (R)"
-        >
-          ROTATE
-        </button>
-        <button
-          @click="setTransformMode('scale')"
-          class="px-3 py-1 rounded-[2px] text-[10px] font-bold transition-all relative overflow-hidden"
-          :class="transformMode === 'scale' ? 'bg-[#3b82f6] text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-main)]'"
-          title="Scale Tool (S)"
-        >
-          SCALE
-        </button>
-      </div>
     </div>
 
-    <!-- Right: Actions -->
-    <div class="flex items-center gap-2">
-      <!-- Save Status -->
+    <!-- Center: Transform Tools -->
+    <div
+      class="flex items-center bg-[var(--bg-input)] rounded p-0.5 border border-[var(--border-light)] shadow-sm"
+    >
+      <button
+        @click="setTransformMode('position')"
+        class="px-4 py-1 rounded-[2px] text-[10px] font-bold transition-all relative overflow-hidden flex items-center gap-1.5"
+        :class="transformMode === 'position' ? 'bg-[#3b82f6] text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-main)]'"
+        title="Move Tool (G)"
+      >
+        <span class="text-sm">✥</span>
+        <span>MOVE</span>
+      </button>
+      <div class="w-px h-3 bg-[var(--border-dark)] mx-0.5 opacity-50"></div>
+      <button
+        @click="setTransformMode('rotation')"
+        class="px-4 py-1 rounded-[2px] text-[10px] font-bold transition-all relative overflow-hidden flex items-center gap-1.5"
+        :class="transformMode === 'rotation' ? 'bg-[#3b82f6] text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-main)]'"
+        title="Rotate Tool (R)"
+      >
+        <span class="text-sm">↻</span>
+        <span>ROTATE</span>
+      </button>
+      <div class="w-px h-3 bg-[var(--border-dark)] mx-0.5 opacity-50"></div>
+      <button
+        @click="setTransformMode('scale')"
+        class="px-4 py-1 rounded-[2px] text-[10px] font-bold transition-all relative overflow-hidden flex items-center gap-1.5"
+        :class="transformMode === 'scale' ? 'bg-[#3b82f6] text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-main)]'"
+        title="Scale Tool (S)"
+      >
+        <span class="text-sm">⤢</span>
+        <span>SCALE</span>
+      </button>
+    </div>
+
+    <!-- Right: File Actions -->
+    <div class="flex items-center gap-3 flex-1 justify-end">
+      <!-- Save Status Pill -->
       <div
-        class="text-[10px] font-mono px-2 py-0.5 rounded"
-        :class="isDirty ? 'text-yellow-400 bg-yellow-900/30' : 'text-green-400 bg-green-900/30'"
-        x-text="saveStatus"
-      ></div>
-
-      <button
-        @click="saveCurrentLevel"
-        class="blender-btn"
-        :class="isDirty ? '!border-yellow-600 !bg-yellow-900/40' : ''"
-        title="Save Scene (auto-saves in 3s)"
+        class="text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-colors"
+        :class="isDirty ? 'text-amber-400 border-amber-900/50 bg-amber-900/20' : 'text-emerald-400 border-emerald-900/50 bg-emerald-900/20'"
+        x-text="isDirty ? '● Unsaved' : '● Saved'"
       >
-        <span>💾</span>
-        <span>Save</span>
-      </button>
+      </div>
 
-      <div class="w-px h-4 bg-[var(--border-light)]"></div>
+      <div class="h-4 w-px bg-[var(--border-light)]"></div>
 
-      <button
-        @click="importJson"
-        class="blender-btn"
-        title="Import JSON file"
-      >
-        <span>📂</span>
-        <span>Import</span>
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          @click="saveCurrentLevel"
+          class="blender-btn text-xs !py-1"
+          :class="isDirty ? '!border-amber-700/50 !bg-amber-900/20 hover:!bg-amber-900/30' : ''"
+          title="Save Scene (Cmd+S)"
+        >
+          <span>💾</span>
+          <span class="font-bold">Save</span>
+        </button>
 
-      <button
-        @click="copyJson"
-        class="blender-btn"
-        :class="copyStatus === 'Copied!' ? '!border-green-800 !bg-green-900/40 !text-green-400' : ''"
-        :title="copyStatus === 'Copied!' ? 'Copied to Clipboard' : 'Copy Level JSON'"
-      >
-        <span x-show="copyStatus !== 'Copied!'">📋</span>
-        <span x-text="copyStatus || 'Copy'"></span>
-      </button>
+        <button
+          @click="importJson"
+          class="blender-btn text-xs !py-1"
+          title="Import JSON"
+        >
+          <span>📂</span>
+        </button>
 
-      <button
-        @click="downloadJson"
-        class="blender-btn"
-        title="Download .json file"
-      >
-        <span>⬇️</span>
-        <span>Export</span>
-      </button>
+        <button
+          @click="copyJson"
+          class="blender-btn text-xs !py-1"
+          title="Copy JSON"
+        >
+          <span x-text="copyStatus === 'Copied!' ? '✅' : '📋'"></span>
+        </button>
+
+        <button
+          @click="downloadJson"
+          class="blender-btn text-xs !py-1"
+          title="Export JSON"
+        >
+          <span>⬇️</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -158,7 +166,7 @@
     <!-- Selection Overlay (Bottom Right) -->
     <div
       class="absolute bottom-3 right-3 pointer-events-none select-none"
-      x-show="selectedEntityIdx !== -1"
+      x-show="selectedEntityIdx !== -1 && !showQuestEditor"
       x-transition.opacity.duration.200ms
     >
       <div
@@ -174,5 +182,8 @@
         ></span>
       </div>
     </div>
+
+    <!-- Quest Graph Editor Overlay -->
+    <QuestGraphEditor />
   </div>
 </main>
