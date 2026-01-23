@@ -5,15 +5,24 @@
 
 import { AudioManager } from "./AudioManager";
 
+export interface DialogueChoice {
+  text: string;
+  value: any;
+}
+
 export interface DialogueLine {
   speaker?: string;
   text: string;
+  choices?: DialogueChoice[];
+  // duration is deprecated/ignored for text lines, but kept for compatibility
   duration?: number;
 }
 
 export interface Dialogue {
   id: string;
   lines: DialogueLine[];
+  onChoice?: (value: any) => void;
+  onComplete?: () => void;
 }
 
 type Theme = "default" | "demon" | "wife";
@@ -41,9 +50,12 @@ export class DialogueManager {
   private current?: Dialogue;
   private lineIndex = 0;
   private active = false;
+  private isTyping = false;
+  private waitingForInput = false;
 
   private rafId: number | null = null;
-  private lineTimer: number | null = null;
+  private inputListener: ((e: KeyboardEvent | MouseEvent) => void) | null =
+    null;
 
   private constructor() {
     this.createUI();
@@ -93,16 +105,63 @@ export class DialogueManager {
       return;
     }
 
-    this.typeText(line.text);
-    this.scheduleNextLine(line.duration ?? DEFAULT_LINE_DURATION_MS);
+    this.typeText(line);
   }
 
-  private typeText(text: string): void {
+  private handleInput(e: KeyboardEvent | MouseEvent): void {
+    if (!this.active) return;
+
+    // Ignore clicks on choices (handled by buttons)
+    if (e.target instanceof HTMLElement && e.target.closest("button")) return;
+
+    if (e instanceof KeyboardEvent && e.code !== "Space" && e.code !== "Enter")
+      return;
+
+    if (this.isTyping) {
+      // Instant finish typing
+      this.finishTyping();
+    } else if (this.waitingForInput) {
+      // Advance to next line
+      this.lineIndex++;
+      this.nextLine();
+    }
+  }
+
+  private setupInputListener(): void {
+    if (this.inputListener) return;
+    this.inputListener = (e) => this.handleInput(e);
+    window.addEventListener("keydown", this.inputListener);
+    window.addEventListener("click", this.inputListener);
+  }
+
+  private cleanup(): void {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.inputListener) {
+      window.removeEventListener("keydown", this.inputListener);
+      window.removeEventListener("click", this.inputListener);
+      this.inputListener = null;
+    }
+    // Remove choices if any
+    const choicesEl = this.overlay?.querySelector("#dialogue-choices");
+    if (choicesEl) choicesEl.remove();
+  }
+
+  private typeText(line: DialogueLine): void {
     if (!this.textEl) return;
 
     this.textEl.textContent = "";
-    this.textEl.classList.add("cursor");
+    this.isTyping = true;
+    this.waitingForInput = false;
+    this.updateHint(false); // Hide hint while typing
 
+    // Clear previous choices
+    const oldChoices = this.overlay?.querySelector("#dialogue-choices");
+    if (oldChoices) oldChoices.remove();
+
+    const text = line.text;
     let charIndex = 0;
     let lastTime = performance.now();
     let soundCounter = 0;
@@ -116,7 +175,6 @@ export class DialogueManager {
         charIndex = Math.min(charIndex + charsToAdd, text.length);
         this.textEl!.textContent = text.slice(0, charIndex);
 
-        // Sound feedback
         soundCounter += charsToAdd;
         if (soundCounter >= TYPING_SOUND_INTERVAL) {
           this.audio.play("typing", false, 0.4);
@@ -127,19 +185,81 @@ export class DialogueManager {
       if (charIndex < text.length) {
         this.rafId = requestAnimationFrame(animate);
       } else {
-        this.textEl?.classList.remove("cursor");
-        this.rafId = null;
+        this.finishTyping();
       }
     };
 
+    this.setupInputListener();
     this.rafId = requestAnimationFrame(animate);
   }
 
-  private scheduleNextLine(duration: number): void {
-    this.lineTimer = window.setTimeout(() => {
-      this.lineIndex++;
-      this.nextLine();
-    }, duration);
+  private finishTyping(): void {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
+    if (!this.current) return;
+    const line = this.current.lines[this.lineIndex];
+
+    if (this.textEl) this.textEl.textContent = line.text;
+    this.isTyping = false;
+
+    // Check for choices
+    if (line.choices && line.choices.length > 0) {
+      this.showChoices(line.choices);
+      this.waitingForInput = false; // Input logic moves to choices
+      this.updateHint(false);
+    } else {
+      this.waitingForInput = true;
+      this.updateHint(true);
+    }
+  }
+
+  private showChoices(choices: DialogueChoice[]): void {
+    if (!this.overlay) return;
+
+    const choicesContainer = document.createElement("div");
+    choicesContainer.id = "dialogue-choices";
+    choicesContainer.className =
+      "flex flex-wrap justify-center gap-3 mt-4 w-full animate-fade-in";
+
+    choices.forEach((choice, idx) => {
+      const btn = document.createElement("button");
+      btn.textContent = choice.text;
+      btn.className = `
+        px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50
+        rounded text-sm font-bold uppercase tracking-wide transition-all
+        hover:scale-105 active:scale-95 backdrop-blur-md shadow-lg
+      `.trim();
+
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        this.handleChoice(choice.value);
+      };
+
+      choicesContainer.appendChild(btn);
+    });
+
+    this.overlay.appendChild(choicesContainer);
+  }
+
+  private handleChoice(value: any): void {
+    if (this.current?.onChoice) {
+      this.current.onChoice(value);
+    }
+    // After choice, we usually advance or close.
+    // For now, let's assume we advance to next line or close if done.
+    this.lineIndex++;
+    this.nextLine();
+  }
+
+  private updateHint(show: boolean): void {
+    const hint = this.overlay?.querySelector("#dialogue-hint");
+    if (hint) {
+      if (show) hint.classList.remove("opacity-0");
+      else hint.classList.add("opacity-0");
+    }
   }
 
   private clearTimers(): void {
@@ -147,14 +267,13 @@ export class DialogueManager {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
-    if (this.lineTimer !== null) {
-      clearTimeout(this.lineTimer);
-      this.lineTimer = null;
-    }
   }
 
   private end(): void {
-    this.clearTimers();
+    if (this.current?.onComplete) {
+      this.current.onComplete();
+    }
+    this.cleanup();
     this.active = false;
     this.current = undefined;
     this.lineIndex = 0;
@@ -174,19 +293,20 @@ export class DialogueManager {
     }
 
     // Apply speaker-specific theme
-    const theme: Theme = speaker === "Demon" ? "demon" : speaker === "Wife" ? "wife" : "default";
+    const theme: Theme =
+      speaker === "Demon" ? "demon" : speaker === "Wife" ? "wife" : "default";
     const themeClass = THEME_CLASSES[theme];
     if (themeClass) this.overlay.classList.add(themeClass);
   }
 
   private show(): void {
-    this.overlay?.classList.remove("opacity-0", "translate-y-4");
-    this.overlay?.classList.add("opacity-100", "translate-y-0");
+    this.overlay?.classList.remove("opacity-0", "translate-y-8", "scale-95");
+    this.overlay?.classList.add("opacity-100", "translate-y-0", "scale-100");
   }
 
   private hide(): void {
-    this.overlay?.classList.remove("opacity-100", "translate-y-0");
-    this.overlay?.classList.add("opacity-0", "translate-y-4");
+    this.overlay?.classList.remove("opacity-100", "translate-y-0", "scale-100");
+    this.overlay?.classList.add("opacity-0", "translate-y-8", "scale-95");
   }
 
   private createUI(): void {
@@ -195,21 +315,45 @@ export class DialogueManager {
     this.overlay = document.createElement("div");
     this.overlay.id = "dialogue-overlay";
     this.overlay.className = `
-      fixed bottom-12 left-1/2 transform -translate-x-1/2 w-[90%] max-w-3xl
-      bg-gradient-to-b from-black/95 to-gray-900/95 border-y-4 text-white
-      p-8 rounded-sm shadow-2xl pointer-events-none opacity-0 translate-y-4
-      transition-all duration-500 z-50 backdrop-blur-xl flex flex-col items-center gap-4
+      fixed bottom-12 left-1/2 transform -translate-x-1/2 w-[90%] max-w-2xl
+      bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl
+      p-6 flex flex-col gap-4 text-white opacity-0 translate-y-8 scale-95
+      transition-all duration-500 ease-out z-50
     `.trim();
+
+    // Header with Speaker Badge
+    const header = document.createElement("div");
+    header.className = "flex items-center gap-3";
+    this.overlay.appendChild(header);
+
+    // Speaker Icon/Badge placeholder (optional, can be expanded)
+    const speakerBadge = document.createElement("div");
+    speakerBadge.className =
+      "w-2 h-8 rounded-full bg-gradient-to-b from-[var(--accent-primary)] to-[var(--accent-secondary)]";
+    // We can color this dynamically based on speaker if needed, for now it's a generic accent
+    speakerBadge.id = "speaker-accent";
+    header.appendChild(speakerBadge);
 
     this.speakerEl = document.createElement("span");
     this.speakerEl.id = "speaker-label";
-    this.speakerEl.className = "font-bold uppercase tracking-[0.3em] text-sm mb-2 opacity-90 font-sans";
+    this.speakerEl.className =
+      "text-xs font-bold uppercase tracking-widest text-white/50 font-sans";
     this.speakerEl.textContent = "UNKNOWN";
-    this.overlay.appendChild(this.speakerEl);
+    header.appendChild(this.speakerEl);
 
+    // Dialogue Text
     this.textEl = document.createElement("p");
-    this.textEl.className = "text-xl md:text-2xl font-mono tracking-wide text-center min-h-[1.5em] leading-relaxed drop-shadow-md";
+    this.textEl.className =
+      "text-lg md:text-xl font-sans font-medium leading-relaxed text-white/90 drop-shadow-sm min-h-[3rem]";
     this.overlay.appendChild(this.textEl);
+
+    // Hint / Continue indicator
+    const hint = document.createElement("div");
+    hint.id = "dialogue-hint";
+    hint.className =
+      "absolute bottom-4 right-6 text-[10px] text-white/30 font-sans uppercase tracking-widest animate-pulse transition-opacity duration-300 opacity-0";
+    hint.textContent = "Press Space ▶";
+    this.overlay.appendChild(hint);
 
     this.injectStyles();
     document.body.appendChild(this.overlay);
@@ -219,55 +363,51 @@ export class DialogueManager {
     const style = document.createElement("style");
     style.textContent = `
       @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-      @keyframes pulse-red {
-        0% { border-color: rgba(127, 29, 29, 0.6); box-shadow: 0 0 15px rgba(127, 29, 29, 0.1); }
-        50% { border-color: rgba(220, 38, 38, 1); box-shadow: 0 0 30px rgba(220, 38, 38, 0.4); }
-        100% { border-color: rgba(127, 29, 29, 0.6); box-shadow: 0 0 15px rgba(127, 29, 29, 0.1); }
-      }
-      @keyframes pulse-cyan {
-        0% { border-color: rgba(6, 182, 212, 0.6); box-shadow: 0 0 15px rgba(6, 182, 212, 0.1); }
-        50% { border-color: rgba(34, 211, 238, 1); box-shadow: 0 0 30px rgba(34, 211, 238, 0.4); }
-        100% { border-color: rgba(6, 182, 212, 0.6); box-shadow: 0 0 15px rgba(6, 182, 212, 0.1); }
-      }
-      @keyframes glitch {
-        0% { text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00; transform: translate(0); }
-        20% { text-shadow: -2px 2px 0px #ff0000, 2px -2px 0px #00ff00; transform: translate(-1px, 1px); }
-        40% { text-shadow: 2px -2px 0px #ff0000, -2px 2px 0px #00ff00; transform: translate(1px, -1px); }
-        100% { text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00; transform: translate(0); }
-      }
-
+      
       .cursor::after {
         content: '';
         display: inline-block;
-        width: 0.6em;
+        width: 2px;
         height: 1.2em;
         background: currentColor;
-        margin-left: 4px;
+        margin-left: 2px;
         vertical-align: middle;
         animation: blink 1s step-end infinite;
       }
 
-      #dialogue-overlay::before {
-        content: " ";
-        display: block;
-        position: absolute;
-        top: 0; left: 0; bottom: 0; right: 0;
-        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-                    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        z-index: 2;
-        background-size: 100% 2px, 3px 100%;
-        pointer-events: none;
+      /* Demon Theme */
+      .theme-demon {
+        background-color: rgba(20, 0, 0, 0.85) !important;
+        border-color: rgba(239, 68, 68, 0.3) !important;
+        box-shadow: 0 0 50px rgba(220, 38, 38, 0.15) !important;
+      }
+      .theme-demon #speaker-accent {
+        background: linear-gradient(to bottom, #ef4444, #7f1d1d) !important;
+      }
+      .theme-demon #speaker-label {
+        color: #fca5a5 !important;
+        text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+      }
+      .theme-demon p {
+        color: #fecaca !important;
       }
 
-      .theme-demon { animation: pulse-red 3s infinite; }
-      .theme-demon #speaker-label { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
-      .theme-demon p { color: #fecaca; text-shadow: 2px 0 #7f1d1d; animation: glitch 3s infinite alternate-reverse; }
-      .theme-demon .cursor::after { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
-
-      .theme-wife { animation: pulse-cyan 4s infinite; }
-      .theme-wife #speaker-label { color: #67e8f9; text-shadow: 0 0 10px rgba(103, 232, 249, 0.8); }
-      .theme-wife p { color: #ecfeff; text-shadow: 0 0 5px rgba(34, 211, 238, 0.6); }
-      .theme-wife .cursor::after { background: #22d3ee; box-shadow: 0 0 10px #22d3ee; }
+      /* Wife Theme */
+      .theme-wife {
+        background-color: rgba(0, 20, 30, 0.85) !important;
+        border-color: rgba(34, 211, 238, 0.3) !important;
+        box-shadow: 0 0 50px rgba(6, 182, 212, 0.15) !important;
+      }
+      .theme-wife #speaker-accent {
+        background: linear-gradient(to bottom, #22d3ee, #0e7490) !important;
+      }
+      .theme-wife #speaker-label {
+        color: #67e8f9 !important;
+        text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+      }
+      .theme-wife p {
+        color: #ecfeff !important;
+      }
     `;
     document.head.appendChild(style);
   }

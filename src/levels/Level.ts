@@ -32,8 +32,17 @@ interface TriggerState {
   triggered: boolean;
 }
 
-type SelectCallback = (type: string, id: number, object: AbstractMesh | null) => void;
-type TransformCallback = (id: number, pos: Vector3, rot?: Vector3, scale?: Vector3) => void;
+type SelectCallback = (
+  type: string,
+  id: number,
+  object: AbstractMesh | null,
+) => void;
+type TransformCallback = (
+  id: number,
+  pos: Vector3,
+  rot?: Vector3,
+  scale?: Vector3,
+) => void;
 
 export class Level extends BaseLevel {
   private levelConfig: LevelConfig;
@@ -86,6 +95,10 @@ export class Level extends BaseLevel {
 
   private async loadEnvironment(): Promise<void> {
     const env = this.levelConfig.environment;
+    if (!env?.asset) {
+      console.warn("[Level] No environment asset configured");
+      return;
+    }
     const data = await this.assetManager.loadMesh(env.asset, this.scene);
     const root = data.meshes[0];
 
@@ -127,7 +140,11 @@ export class Level extends BaseLevel {
     }
   }
 
-  private async spawnNPC(index: number, spawn: NPCSpawn, position: Vector3): Promise<void> {
+  private async spawnNPC(
+    index: number,
+    spawn: NPCSpawn,
+    position: Vector3,
+  ): Promise<void> {
     const npc = await this.entityFactory.spawnNPC({
       entityKey: spawn.entity,
       asset: spawn.asset,
@@ -147,8 +164,16 @@ export class Level extends BaseLevel {
     this.entityMeshIndex.set(index, npc.mesh);
   }
 
-  private spawnPortalEntity(index: number, spawn: any, position: Vector3): void {
-    const portal = this.entityFactory.spawnPortal(position, spawn.targetLevel, this.isEditorMode);
+  private spawnPortalEntity(
+    index: number,
+    spawn: any,
+    position: Vector3,
+  ): void {
+    const portal = this.entityFactory.spawnPortal(
+      position,
+      spawn.targetLevel,
+      this.isEditorMode,
+    );
     this.portals.set(index, portal);
 
     if (!this.portal) this.portal = portal;
@@ -160,14 +185,24 @@ export class Level extends BaseLevel {
     }
   }
 
-  private async spawnProp(index: number, spawn: any, position: Vector3): Promise<void> {
+  private async spawnProp(
+    index: number,
+    spawn: any,
+    position: Vector3,
+  ): Promise<void> {
     const data = await this.assetManager.loadMesh(spawn.asset, this.scene);
     const root = data.meshes[0];
     if (!root) return;
 
     root.position.copyFrom(position);
-    if (spawn.rotation) root.rotation.set(spawn.rotation[0], spawn.rotation[1], spawn.rotation[2]);
-    if (spawn.scaling) root.scaling.set(spawn.scaling[0], spawn.scaling[1], spawn.scaling[2]);
+    if (spawn.rotation)
+      root.rotation.set(
+        spawn.rotation[0],
+        spawn.rotation[1],
+        spawn.rotation[2],
+      );
+    if (spawn.scaling)
+      root.scaling.set(spawn.scaling[0], spawn.scaling[1], spawn.scaling[2]);
 
     this.props.set(index, root);
     this.setEntityMetadata(root, index, "prop");
@@ -182,13 +217,14 @@ export class Level extends BaseLevel {
     mesh: AbstractMesh,
     index: number,
     entityType: EntityMetadata["entityType"],
-    id?: string
+    id?: string,
   ): void {
     mesh.metadata = { type: "entity", index, entityType, id } as EntityMetadata;
   }
 
   private setupPropPhysics(mesh: Mesh, physics: any): void {
-    const motionType = physics.mass > 0 ? PhysicsMotionType.DYNAMIC : PhysicsMotionType.STATIC;
+    const motionType =
+      physics.mass > 0 ? PhysicsMotionType.DYNAMIC : PhysicsMotionType.STATIC;
     const body = new PhysicsBody(mesh, motionType, false, this.scene);
     body.setMassProperties({ mass: physics.mass });
     body.shape = new PhysicsShapeMesh(mesh, this.scene);
@@ -334,16 +370,20 @@ export class Level extends BaseLevel {
 
       case "flicker":
         if (effect.target === "flashlight") {
-          const range = Math.random() < effect.chance ? effect.lowRange : effect.highRange;
-          this.flashlight.intensity = range[0] + Math.random() * (range[1] - range[0]);
+          const range =
+            Math.random() < effect.chance ? effect.lowRange : effect.highRange;
+          this.flashlight.intensity =
+            range[0] + Math.random() * (range[1] - range[0]);
         }
         break;
 
       case "heartbeatVignette":
         if (this.pipeline) {
           const time = this.effectTime * effect.speed;
-          const heartbeat = (Math.sin(time) + Math.sin(time * 2) + Math.sin(time * 0.5)) / 3;
-          this.pipeline.imageProcessing.vignetteWeight = effect.baseWeight + heartbeat * effect.amplitude;
+          const heartbeat =
+            (Math.sin(time) + Math.sin(time * 2) + Math.sin(time * 0.5)) / 3;
+          this.pipeline.imageProcessing.vignetteWeight =
+            effect.baseWeight + heartbeat * effect.amplitude;
         }
         break;
 
@@ -361,89 +401,192 @@ export class Level extends BaseLevel {
     // Nothing needed here - proximity check happens in onUpdate
   }
 
-
-  private executeQuestGraph(graphData: Record<string, any>, speakerName: string): void {
+  private executeQuestGraph(
+    graphData: Record<string, any>,
+    speakerName: string,
+  ): void {
     const dialogueManager = DialogueManager.getInstance();
 
     const nodes = graphData.nodes || [];
     const links = graphData.links || [];
 
-    // Build link map: link_id -> { from, to }
-    const linkMap = new Map<number, { from: number; to: number }>();
+    // Helper: Map link_id -> { from_node, from_slot, to_node, to_slot }
+    const linkMap = new Map<
+      number,
+      { from: number; to: number; slot: number }
+    >();
     for (const link of links) {
+      // LiteGraph link format: [id, origin_id, origin_slot, target_id, target_slot, type]
       if (Array.isArray(link) && link.length >= 4) {
-        linkMap.set(link[0], { from: link[1], to: link[3] });
+        linkMap.set(link[0], { from: link[1], to: link[3], slot: link[2] }); // slot is origin_slot usually
       }
     }
 
-    // Build node map and find START node
-    const nodeMap = new Map<number, any>();
-    let startNode: any = null;
-    for (const node of nodes) {
-      nodeMap.set(node.id, node);
-      if (node.type === "Dialog/Start") {
-        startNode = node;
-      }
-    }
+    // Helper: Find node by ID
+    const getNode = (id: number) => nodes.find((n: any) => n.id === id);
 
-    if (!startNode) return;
+    // Helper: Get next node connected to a specific output slot
+    const getNextNode = (node: any, slotIndex: number = 0) => {
+      if (
+        !node.outputs ||
+        !node.outputs[slotIndex] ||
+        !node.outputs[slotIndex].links
+      )
+        return null;
+      const linkIds = node.outputs[slotIndex].links;
+      if (!linkIds || linkIds.length === 0) return null;
 
-    // Follow flow from START, collecting SAY texts
-    const dialogueLines: { speaker: string; text: string; duration: number }[] = [];
-    let currentNode = startNode;
-    const visited = new Set<number>();
+      const linkId = linkIds[0]; // Assume single connection for flow
+      const link = linkMap.get(linkId);
+      return link ? getNode(link.to) : null;
+    };
 
-    while (currentNode && !visited.has(currentNode.id)) {
-      visited.add(currentNode.id);
+    // Recursive runner function
+    const runStep = (nodeId: number) => {
+      const node = getNode(nodeId);
+      if (!node) return;
 
-      // SAY node - collect text
-      if (currentNode.type === "Dialog/Say") {
-        // LiteGraph stores widget values in widgets_values array (index 0 is the text)
-        let text = "";
-        if (currentNode.widgets_values && currentNode.widgets_values.length > 0) {
-          text = String(currentNode.widgets_values[0]);
-        } else if (currentNode.properties?.text) {
-          text = String(currentNode.properties.text);
+      switch (node.type) {
+        case "Dialog/Start": {
+          const next = getNextNode(node, 0);
+          if (next) runStep(next.id);
+          break;
         }
 
-        if (text) {
-          dialogueLines.push({
-            speaker: speakerName,
-            text: text,
-            duration: Math.max(2500, text.length * 100),
-          });
-        }
-      }
+        case "Dialog/Say": {
+          // Look ahead for sequential SAY nodes to bundle
+          const lines: { speaker: string; text: string }[] = [];
+          let curr: any = node;
 
-      // Find next node via output links
-      const outputs = currentNode.outputs || [];
-      let nextNodeId: number | null = null;
+          while (curr && curr.type === "Dialog/Say") {
+            let text = "";
+            if (curr.widgets_values && curr.widgets_values.length > 0) {
+              text = String(curr.widgets_values[0]);
+            } else if (curr.properties?.text) {
+              text = String(curr.properties.text);
+            }
 
-      for (const output of outputs) {
-        if (output.links && output.links.length > 0) {
-          const linkId = output.links[0];
-          const link = linkMap.get(linkId);
-          if (link) {
-            nextNodeId = link.to;
-            break;
+            lines.push({ speaker: speakerName, text });
+
+            // Peek at next
+            const next = getNextNode(curr, 0);
+            if (next && next.type === "Dialog/Say") {
+              curr = next;
+            } else {
+              // Stop bundling if next is not Say or null
+              // pass the *next* node ID to onComplete
+              const nextId = next ? next.id : null;
+
+              const dialogueId = `quest_say_${Date.now()}`;
+              dialogueManager.register({
+                id: dialogueId,
+                lines: lines,
+                onComplete: () => {
+                  if (nextId) runStep(nextId);
+                },
+              });
+              dialogueManager.play(dialogueId);
+              return; // Halt this stack, wait for callback
+            }
           }
+          break;
+        }
+
+        case "Dialog/Choice": {
+          const prompt = node.properties.prompt || "Choose...";
+          const options = node.properties.options || ["Yes", "No"];
+
+          // Build choices for UI
+          const choices = options
+            .slice(0, 3)
+            .map((opt: string, idx: number) => ({
+              text: opt || `Option ${idx + 1}`,
+              value: idx, // Pass the output slot index as value
+            }))
+            .filter((c: any) => c.text);
+
+          const dialogueId = `quest_choice_${Date.now()}`;
+          dialogueManager.register({
+            id: dialogueId,
+            lines: [{ speaker: speakerName, text: prompt, choices }],
+            onChoice: (slotIndex) => {
+              // User picked an option, follow that slot
+              const next = getNextNode(node, slotIndex);
+              if (next) runStep(next.id);
+              else {
+                // If no connection, maybe end or just close
+                dialogueManager.stop();
+              }
+            },
+          });
+          dialogueManager.play(dialogueId);
+          break;
+        }
+
+        case "Dialog/Check": {
+          // Simple logic:
+          // If "item" -> (random check for now, or always true if no inventory sys)
+          // For demo, let's say "Yes, I have it" requires 50/50 or always true
+          // Let's implement real check if possible or mock it
+          const checkType = node.properties.checkType;
+          let result = false;
+
+          if (checkType === "Level") {
+            // Example check
+            result = true;
+          } else {
+            // Default random for testing branching visually
+            // OR ideally checks inventory.
+            // Since inventory isn't fully in this file, we assume TRUE for convenience in demo
+            // unless we want to simulate failure.
+            result = Math.random() > 0.1; // 90% success
+          }
+
+          // Output 0 = True, Output 1 = False
+          const slot = result ? 0 : 1;
+          const next = getNextNode(node, slot);
+          if (next) runStep(next.id);
+          break;
+        }
+
+        case "Dialog/Give": {
+          // Do the action
+          const giveType = node.properties.giveType;
+          console.log(`[Quest] Giving ${giveType}: ${node.properties.amount}`);
+          // In real game: inventory.add(...)
+
+          // Continue
+          const next = getNextNode(node, 0);
+          if (next) runStep(next.id);
+          break;
+        }
+
+        case "Dialog/End": {
+          console.log("[Quest] Ended.");
+          dialogueManager.stop();
+          break;
+        }
+
+        default: {
+          console.warn("[Quest] Unknown node type:", node.type);
+          break;
         }
       }
+    };
 
-      currentNode = nextNodeId !== null ? nodeMap.get(nextNodeId) : null;
-    }
-
-    // Play collected dialogue
-    if (dialogueLines.length > 0) {
-      const dialogueId = `quest_${Date.now()}`;
-      dialogueManager.register({ id: dialogueId, lines: dialogueLines });
-      dialogueManager.play(dialogueId);
+    // Find START and Run
+    const startNode = nodes.find((n: any) => n.type === "Dialog/Start");
+    if (startNode) {
+      runStep(startNode.id);
     }
   }
 
   // ==================== EDITOR API ====================
 
-  public enableEditorMode(onSelect: SelectCallback, onChange: TransformCallback): void {
+  public enableEditorMode(
+    onSelect: SelectCallback,
+    onChange: TransformCallback,
+  ): void {
     this.cleanupGizmos();
     this.isEditorMode = true;
 
@@ -462,7 +605,8 @@ export class Level extends BaseLevel {
     this.gizmoManager.usePointerToAttachGizmos = false;
     this.gizmoManager.clearGizmoOnEmptyPointerEvent = false;
 
-    this.scene.onPointerDown = (evt, pickResult) => this.handleEditorClick(evt, pickResult);
+    this.scene.onPointerDown = (evt, pickResult) =>
+      this.handleEditorClick(evt, pickResult);
     this.setupGizmoObservers();
   }
 
@@ -490,9 +634,18 @@ export class Level extends BaseLevel {
     const { positionGizmo, rotationGizmo, scaleGizmo } = gm.gizmos;
 
     return !!(
-      (positionGizmo && (positionGizmo.xGizmo.isHovered || positionGizmo.yGizmo.isHovered || positionGizmo.zGizmo.isHovered)) ||
-      (rotationGizmo && (rotationGizmo.xGizmo.isHovered || rotationGizmo.yGizmo.isHovered || rotationGizmo.zGizmo.isHovered)) ||
-      (scaleGizmo && (scaleGizmo.xGizmo.isHovered || scaleGizmo.yGizmo.isHovered || scaleGizmo.zGizmo.isHovered))
+      (positionGizmo &&
+        (positionGizmo.xGizmo.isHovered ||
+          positionGizmo.yGizmo.isHovered ||
+          positionGizmo.zGizmo.isHovered)) ||
+      (rotationGizmo &&
+        (rotationGizmo.xGizmo.isHovered ||
+          rotationGizmo.yGizmo.isHovered ||
+          rotationGizmo.zGizmo.isHovered)) ||
+      (scaleGizmo &&
+        (scaleGizmo.xGizmo.isHovered ||
+          scaleGizmo.yGizmo.isHovered ||
+          scaleGizmo.zGizmo.isHovered))
     );
   }
 
@@ -522,7 +675,7 @@ export class Level extends BaseLevel {
         meta.index,
         mesh.position.clone(),
         mesh.rotation.clone(),
-        mesh.scaling.clone()
+        mesh.scaling.clone(),
       );
     };
 
@@ -554,18 +707,24 @@ export class Level extends BaseLevel {
     this.gizmoManager.scaleGizmoEnabled = mode === "scale";
   }
 
-  public updateEntityTransform(index: number, position: number[], rotation?: number[], scale?: number[]): void {
+  public updateEntityTransform(
+    index: number,
+    position: number[],
+    rotation?: number[],
+    scale?: number[],
+  ): void {
     const mesh = this.findMeshByIndex(index);
     if (!mesh) return;
 
     mesh.position.set(position[0], position[1], position[2]);
-    if (rotation) mesh.rotation = new Vector3(rotation[0], rotation[1], rotation[2]);
+    if (rotation)
+      mesh.rotation = new Vector3(rotation[0], rotation[1], rotation[2]);
     if (scale) mesh.scaling = new Vector3(scale[0], scale[1], scale[2]);
 
     if (mesh.physicsBody) {
       mesh.physicsBody.setTargetTransform(
         mesh.position,
-        mesh.rotationQuaternion || mesh.rotation.toQuaternion()
+        mesh.rotationQuaternion || mesh.rotation.toQuaternion(),
       );
     }
   }
@@ -588,7 +747,11 @@ export class Level extends BaseLevel {
     return npc.playAnimation(animationName);
   }
 
-  public async swapNPCModel(index: number, assetPath: string, scale?: number): Promise<string[]> {
+  public async swapNPCModel(
+    index: number,
+    assetPath: string,
+    scale?: number,
+  ): Promise<string[]> {
     const oldNpc = this.npcs.get(index);
     if (oldNpc) {
       oldNpc.dispose();
@@ -596,7 +759,9 @@ export class Level extends BaseLevel {
     }
 
     const spawn = this.levelConfig.entities[index];
-    const position = spawn?.position ? new Vector3(...spawn.position) : Vector3.Zero();
+    const position = spawn?.position
+      ? new Vector3(...spawn.position)
+      : Vector3.Zero();
     const animations = spawn?.type === "npc" ? spawn.animations : undefined;
 
     const newNpc = await this.entityFactory.spawnNPC({

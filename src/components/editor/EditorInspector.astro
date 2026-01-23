@@ -81,6 +81,7 @@
                 <input
                   type="text"
                   x-model="config.environment.asset"
+                  @change="reloadLevelPromise()"
                   class="blender-input w-full truncate"
                 />
                 <button
