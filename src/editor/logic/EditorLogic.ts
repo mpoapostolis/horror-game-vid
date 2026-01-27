@@ -29,7 +29,7 @@ function isPortalSpawn(entity: EntitySpawn): entity is PortalSpawn {
 // ==================== TYPES ====================
 
 type TransformMode = "position" | "rotation" | "scale";
-type AssetField = "entity" | "asset" | "music" | "environment";
+type AssetField = "entity" | "asset" | "music" | "environment" | "sound";
 
 interface AssetSelection {
   index: number | null;
@@ -195,7 +195,8 @@ export function editorLogic() {
 
     get filteredAssets(): readonly string[] {
       const source =
-        this.selectingAssetFor?.field === "music"
+        this.selectingAssetFor?.field === "music" ||
+        this.selectingAssetFor?.field === "sound"
           ? this.availableMusic
           : this.availableAssets;
       if (!this.searchQuery) return source;
@@ -301,6 +302,15 @@ export function editorLogic() {
       this.reloadLevelPromise();
     },
 
+    async playGame() {
+      await this.saveCurrentLevel();
+      // Redirect to game page, which should load the "current" level from storage or query param
+      // We'll trust that the game loads the last edited level or "editor" level if saved.
+      // But actually, the Game page loads based on storage or default.
+      // Let's ensure we are saving to the right place.
+      window.location.href = "/game";
+    },
+
     saveCurrentLevel() {
       store.save(this.config);
       this.levelList = store.getAllMeta();
@@ -361,6 +371,7 @@ export function editorLogic() {
         const lvl = levelManager.getCurrentLevel();
 
         if (lvl instanceof Level) {
+          console.log("[EditorLogic] Enabling Editor Mode on Level...");
           lvl.enableEditorMode(
             (type, id) => this.onObjectSelected(type, id),
             (id, pos, rot, scale) =>
@@ -485,6 +496,12 @@ export function editorLogic() {
 
     selectEntity(idx: number) {
       this.selectedEntityIdx = idx;
+
+      const lvl = LevelManager.getInstance().getCurrentLevel();
+      if (lvl instanceof Level) {
+        lvl.highlightEntity(idx);
+      }
+
       safeTimeout(() => this.loadEntityAnimations(idx), 100);
     },
 
@@ -493,7 +510,7 @@ export function editorLogic() {
       this.currentEntityAnims = [];
       const lvl = LevelManager.getInstance().getCurrentLevel();
       if (lvl instanceof Level) {
-        (lvl as any).gizmoManager?.attachToMesh(null);
+        lvl.highlightEntity(-1);
       }
     },
 
@@ -543,6 +560,16 @@ export function editorLogic() {
               this.markDirty();
             } else if (isNPCSpawn(ent)) {
               await this.swapEntityModel(index, assetPath);
+            }
+          }
+          break;
+
+        case "sound":
+          if (index !== null && this.config.entities[index]) {
+            const ent = this.config.entities[index];
+            if (isNPCSpawn(ent)) {
+              ent.interactionSound = assetPath;
+              this.markDirty();
             }
           }
           break;

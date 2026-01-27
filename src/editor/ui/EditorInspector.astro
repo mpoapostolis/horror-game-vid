@@ -556,10 +556,7 @@
               >
                 <option value="">-- Select Level --</option>
                 <template x-for="level in levelList" :key="level.id">
-                  <option
-                    :value="level.id"
-                    x-text="level.name"
-                  ></option>
+                  <option :value="level.id" x-text="level.name"></option>
                 </template>
               </select>
             </div>
@@ -636,89 +633,106 @@
               </div>
             </div>
           </div>
-
-          <template
-            x-if="['npc', 'prop'].includes(config.entities[selectedEntityIdx].type)"
-          >
-            <div
-              class="space-y-2 pt-2 border-t border-[var(--border-light)] px-2"
-            >
-              <!-- Quest Graph Editor -->
-              <template
-                x-if="config.entities[selectedEntityIdx].type === 'npc'"
-              >
-                <div class="mb-2">
-                  <button
-                    @click="openQuestEditor(selectedEntityIdx)"
-                    class="w-full py-2 text-[var(--accent-primary)]/80 border-[var(--accent-primary)]/30 font-bold text-[10px] rounded transition-colors flex items-center justify-center gap-2 uppercase tracking-wide border"
-                  >
-                    <span>🕸️</span>
-                    <span>Edit Quest Flow</span>
-                  </button>
-                </div>
-              </template>
-            </div>
-          </template>
         </div>
 
-        <template x-if="config.entities[selectedEntityIdx].type === 'prop'">
-          <div class="prop-group mt-1">
-            <div class="prop-group-header flex justify-between">
-              <span>PHYSICS</span>
-              <input
-                type="checkbox"
-                :checked="config.entities[selectedEntityIdx].physics?.enabled ?? false"
-                @change="if(!$el.checked) { delete config.entities[selectedEntityIdx].physics; } else { config.entities[selectedEntityIdx].physics = { enabled: true, mass: 0, impostor: 'box' }; } reloadLevelPromise()"
-                class="accent-[var(--accent-primary)]"
-              />
-            </div>
+        <!-- NPC Interaction Sound -->
+        <div
+          x-show="config.entities[selectedEntityIdx].type === 'npc'"
+          class="flex items-center gap-2 mt-2"
+        >
+          <label
+            class="text-[10px] text-[var(--text-muted)] w-14 text-right shrink-0"
+            >Sound</label
+          >
+          <div class="flex-1 flex gap-1">
+            <input
+              type="text"
+              x-model="config.entities[selectedEntityIdx].interactionSound"
+              @change="markDirty()"
+              placeholder="sound_id"
+              class="bg-[var(--bg-input)] border border-[var(--border-light)] rounded px-2 py-1 text-[10px] w-full text-[var(--text-main)] outline-none focus:border-[var(--accent-primary)]"
+            />
+            <button
+              @click="openAssetBrowser(selectedEntityIdx, 'sound')"
+              class="px-2 bg-[var(--bg-input)] hover:bg-[var(--bg-input-hover)] border border-[var(--border-light)] rounded text-[10px]"
+              title="Select Sound">🎵</button
+            >
+          </div>
+        </div>
+      </div>
+    </template>
 
-            <template
-              x-if="config.entities[selectedEntityIdx].physics?.enabled"
+    <!-- NPC Dialogue Editor -->
+
+    <template
+      x-if="['npc', 'prop'].includes(config.entities[selectedEntityIdx].type)"
+    >
+      <div class="space-y-2 pt-2 border-t border-[var(--border-light)] px-2">
+        <!-- Quest Graph Editor -->
+        <template x-if="config.entities[selectedEntityIdx].type === 'npc'">
+          <div class="mb-2">
+            <button
+              @click="openQuestEditor(selectedEntityIdx)"
+              class="w-full py-2 text-[var(--accent-primary)]/80 border-[var(--accent-primary)]/30 font-bold text-[10px] rounded transition-colors flex items-center justify-center gap-2 uppercase tracking-wide border"
             >
-              <div class="space-y-1 p-2">
-                <div class="flex items-center gap-2">
-                  <label
-                    class="text-[10px] text-(--text-muted) w-20 text-right shrink-0"
-                    >Mass (kg)</label
-                  >
-                  <input
-                    type="number"
-                    x-model.number="config.entities[selectedEntityIdx].physics.mass"
-                    @change="reloadLevelPromise"
-                    class="blender-input w-20"
-                  />
-                </div>
-                <div class="flex items-center gap-2">
-                  <label
-                    class="text-[10px] text-(--text-muted) w-20 text-right shrink-0"
-                    >Collider</label
-                  >
-                  <select
-                    x-model="config.entities[selectedEntityIdx].physics.impostor"
-                    @change="reloadLevelPromise"
-                    class="blender-input w-full"
-                  >
-                    <option value="box">Box</option>
-                    <option value="sphere">Sphere</option>
-                    <option value="mesh">Mesh</option>
-                    <option value="capsule">Capsule</option>
-                  </select>
-                </div>
-              </div>
-            </template>
-            <template
-              x-if="!config.entities[selectedEntityIdx].physics?.enabled"
-            >
-              <div
-                class="text-[var(--text-dim)] text-[10px] italic text-center py-2"
-              >
-                Physics Disabled
-              </div>
-            </template>
+              <span>🕸️</span>
+              <span>Edit Quest Flow</span>
+            </button>
           </div>
         </template>
       </div>
     </template>
   </div>
+
+  <template x-if="config.entities[selectedEntityIdx].type === 'prop'">
+    <div class="prop-group mt-1">
+      <div class="prop-group-header flex justify-between">
+        <span>PHYSICS</span>
+        <input
+          type="checkbox"
+          :checked="config.entities[selectedEntityIdx].physics?.enabled ?? false"
+          @change="if(!$el.checked) { delete config.entities[selectedEntityIdx].physics; } else { config.entities[selectedEntityIdx].physics = { enabled: true, mass: 0, impostor: 'box' }; } reloadLevelPromise()"
+          class="accent-[var(--accent-primary)]"
+        />
+      </div>
+
+      <template x-if="config.entities[selectedEntityIdx].physics?.enabled">
+        <div class="space-y-1 p-2">
+          <div class="flex items-center gap-2">
+            <label
+              class="text-[10px] text-(--text-muted) w-20 text-right shrink-0"
+              >Mass (kg)</label
+            >
+            <input
+              type="number"
+              x-model.number="config.entities[selectedEntityIdx].physics.mass"
+              @change="reloadLevelPromise"
+              class="blender-input w-20"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <label
+              class="text-[10px] text-(--text-muted) w-20 text-right shrink-0"
+              >Collider</label
+            >
+            <select
+              x-model="config.entities[selectedEntityIdx].physics.impostor"
+              @change="reloadLevelPromise"
+              class="blender-input w-full"
+            >
+              <option value="box">Box</option>
+              <option value="sphere">Sphere</option>
+              <option value="mesh">Mesh</option>
+              <option value="capsule">Capsule</option>
+            </select>
+          </div>
+        </div>
+      </template>
+      <template x-if="!config.entities[selectedEntityIdx].physics?.enabled">
+        <div class="text-[var(--text-dim)] text-[10px] italic text-center py-2">
+          Physics Disabled
+        </div>
+      </template>
+    </div>
+  </template>
 </aside>

@@ -19,16 +19,20 @@
     <div
       class="h-10 bg-[var(--bg-header)] border-b border-[var(--border-dark)] flex justify-between items-center px-4 select-none"
     >
-      <span class="text-sm font-bold text-[var(--text-main)]">Create New Scene</span>
+      <span class="text-sm font-bold text-[var(--text-main)]"
+        >Create New Scene</span
+      >
       <button
         @click="showNewLevelModal = false"
-        class="text-[var(--text-muted)] hover:text-white px-2 text-xl"
-      >×</button>
+        class="text-[var(--text-muted)] hover:text-white px-2 text-xl">×</button
+      >
     </div>
 
     <div class="p-6 flex flex-col gap-4">
       <div>
-        <label class="text-[11px] text-[var(--text-muted)] font-bold uppercase tracking-wider block mb-2">
+        <label
+          class="text-[11px] text-[var(--text-muted)] font-bold uppercase tracking-wider block mb-2"
+        >
           Scene Name
         </label>
         <input
@@ -43,10 +47,7 @@
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button
-          @click="showNewLevelModal = false"
-          class="blender-btn"
-        >
+        <button @click="showNewLevelModal = false" class="blender-btn">
           Cancel
         </button>
         <button
@@ -80,7 +81,7 @@
     >
       <span
         class="text-sm font-bold text-[var(--text-main)]"
-        x-text="selectingAssetFor?.field === 'music' ? 'Select Music' : 'Asset Browser'"
+        x-text="['music', 'sound'].includes(selectingAssetFor?.field) ? 'Select Audio' : 'Asset Browser'"
         >Asset Browser</span
       >
       <button
@@ -110,7 +111,7 @@
       <div class="grid grid-cols-6 gap-3">
         <template x-for="asset in filteredAssets">
           <div
-            @click="onAssetSelected(asset)"
+            @dblclick="onAssetSelected(asset)"
             class="flex flex-col group cursor-pointer p-2 rounded hover:bg-[var(--bg-input-hover)] transition-colors border border-transparent hover:border-[var(--border-light)]"
           >
             <div
@@ -118,7 +119,7 @@
             >
               <span
                 class="text-3xl opacity-30 group-hover:opacity-100 transition-all transform group-hover:scale-110"
-                x-text="selectingAssetFor?.field === 'music' ? '🎵' : '📦'"
+                x-text="['music', 'sound'].includes(selectingAssetFor?.field) ? '🎵' : '📦'"
                 >📦</span
               >
             </div>

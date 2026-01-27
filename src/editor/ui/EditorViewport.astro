@@ -120,27 +120,12 @@ import QuestGraphEditor from "./QuestGraphEditor.astro";
         </button>
 
         <button
-          @click="importJson"
-          class="blender-btn text-xs !py-1"
-          title="Import JSON"
+          @click="playGame"
+          class="blender-btn text-xs !py-1 !text-emerald-400 !border-emerald-700/50 !bg-emerald-900/20 hover:!bg-emerald-900/30"
+          title="Play Level"
         >
-          <span>📂</span>
-        </button>
-
-        <button
-          @click="copyJson"
-          class="blender-btn text-xs !py-1"
-          title="Copy JSON"
-        >
-          <span x-text="copyStatus === 'Copied!' ? '✅' : '📋'"></span>
-        </button>
-
-        <button
-          @click="downloadJson"
-          class="blender-btn text-xs !py-1"
-          title="Export JSON"
-        >
-          <span>⬇️</span>
+          <span>▶️</span>
+          <span class="font-bold">Play</span>
         </button>
       </div>
     </div>

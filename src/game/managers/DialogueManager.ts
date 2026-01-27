@@ -63,7 +63,8 @@ export class DialogueManager {
 
   // Animation
   private rafId: number | null = null;
-  private inputListener: ((e: KeyboardEvent | MouseEvent) => void) | null = null;
+  private inputListener: ((e: KeyboardEvent | MouseEvent) => void) | null =
+    null;
 
   private constructor() {
     this.createUI();
@@ -194,7 +195,8 @@ export class DialogueManager {
     // Ignore clicks on choice buttons
     if (e.target instanceof HTMLElement && e.target.closest("button")) return;
 
-    if (e instanceof KeyboardEvent && e.code !== "Space" && e.code !== "Enter") return;
+    if (e instanceof KeyboardEvent && e.code !== "Space" && e.code !== "Enter")
+      return;
 
     if (this.isTyping) {
       this.finishTyping();
@@ -229,7 +231,8 @@ export class DialogueManager {
 
     const container = document.createElement("div");
     container.id = "dialogue-choices";
-    container.className = "flex flex-wrap justify-center gap-3 mt-4 w-full animate-fade-in";
+    container.className =
+      "flex flex-wrap justify-center gap-3 mt-4 w-full animate-fade-in";
 
     for (const choice of choices) {
       const btn = document.createElement("button");
@@ -253,11 +256,17 @@ export class DialogueManager {
   }
 
   private handleChoiceSelection(value: number): void {
+    const previousId = this.current?.id;
+
     if (this.current?.onChoice) {
       this.current.onChoice(value);
     }
-    this.lineIndex++;
-    this.nextLine();
+
+    // Only advance if the dialogue hasn't changed (e.g. onChoice didn't start a new dialogue)
+    if (this.current && this.current.id === previousId) {
+      this.lineIndex++;
+      this.nextLine();
+    }
   }
 
   private clearChoices(): void {
@@ -348,12 +357,14 @@ export class DialogueManager {
     header.className = "flex items-center gap-3";
 
     const speakerBadge = document.createElement("div");
-    speakerBadge.className = "w-2 h-8 rounded-full bg-gradient-to-b from-[var(--accent-primary)] to-[var(--accent-secondary)]";
+    speakerBadge.className =
+      "w-2 h-8 rounded-full bg-gradient-to-b from-[var(--accent-primary)] to-[var(--accent-secondary)]";
     speakerBadge.id = "speaker-accent";
 
     this.speakerEl = document.createElement("span");
     this.speakerEl.id = "speaker-label";
-    this.speakerEl.className = "text-xs font-bold uppercase tracking-widest text-white/50 font-sans";
+    this.speakerEl.className =
+      "text-xs font-bold uppercase tracking-widest text-white/50 font-sans";
     this.speakerEl.textContent = "UNKNOWN";
 
     header.appendChild(speakerBadge);
@@ -362,13 +373,15 @@ export class DialogueManager {
 
     // Text
     this.textEl = document.createElement("p");
-    this.textEl.className = "text-lg md:text-xl font-sans font-medium leading-relaxed text-white/90 drop-shadow-sm min-h-[3rem]";
+    this.textEl.className =
+      "text-lg md:text-xl font-sans font-medium leading-relaxed text-white/90 drop-shadow-sm min-h-[3rem]";
     this.overlay.appendChild(this.textEl);
 
     // Hint
     this.hintEl = document.createElement("div");
     this.hintEl.id = "dialogue-hint";
-    this.hintEl.className = "absolute bottom-4 right-6 text-[10px] text-white/30 font-sans uppercase tracking-widest animate-pulse transition-opacity duration-300 opacity-0";
+    this.hintEl.className =
+      "absolute bottom-4 right-6 text-[10px] text-white/30 font-sans uppercase tracking-widest animate-pulse transition-opacity duration-300 opacity-0";
     this.hintEl.textContent = "Press Space";
     this.overlay.appendChild(this.hintEl);
 

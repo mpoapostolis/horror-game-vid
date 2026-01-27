@@ -111,6 +111,7 @@ export class Level extends BaseLevel {
   private onEntitySelected?: EntitySelectCallback;
   private onTransformChanged?: TransformChangeCallback;
   private isEditorMode = false;
+  private currentInteractingNPC: number | null = null;
 
   constructor(config: LevelConfig) {
     super({
@@ -148,6 +149,7 @@ export class Level extends BaseLevel {
   protected override onUpdate(): void {
     if (!this.isEditorMode) {
       this.checkNPCProximity();
+      this.checkInteractionState();
     }
     this.processTriggers();
     this.processEffects();
@@ -155,6 +157,10 @@ export class Level extends BaseLevel {
 
   public start(): void {
     // Game start logic (if any)
+  }
+
+  public setEditorMode(enabled: boolean): void {
+    this.isEditorMode = enabled;
   }
 
   public override dispose(): void {
@@ -283,7 +289,7 @@ export class Level extends BaseLevel {
     this.entityMeshIndex.set(index, root);
     this.setEntityMetadata(root, index, "prop");
 
-    if (spawn.physics?.enabled) {
+    if (!this.isEditorMode && spawn.physics?.enabled) {
       if (spawn.physics.mass === 0) {
         // Static prop: apply physics to all sub-meshes for accurate collision
         for (const m of data.meshes) {
@@ -376,14 +382,65 @@ export class Level extends BaseLevel {
     }
   }
 
+  private checkInteractionState(): void {
+    if (this.currentInteractingNPC === null) return;
+
+    if (!DialogueManager.getInstance().isActive()) {
+      // Interaction ended, restore idle
+      const npc = this.npcs.get(this.currentInteractingNPC);
+      const spawn = this.levelConfig.entities[this.currentInteractingNPC];
+
+      if (npc && spawn && spawn.type === "npc" && spawn.animations?.idle) {
+        npc.playAnimation(spawn.animations.idle, true);
+      } else if (npc) {
+        // Fallback to default idle
+        npc.playAnimation("idle", true);
+      }
+
+      this.currentInteractingNPC = null;
+    }
+  }
+
   private handleNPCInteraction(index: number, spawn: NPCSpawn): void {
     const dialogueManager = DialogueManager.getInstance();
+    this.currentInteractingNPC = index;
 
+    if (spawn.interactionSound) {
+      AudioManager.getInstance().play(spawn.interactionSound);
+    }
+
+    // Play interaction animation (LOOPING)
+    if (spawn.animations?.interact) {
+      const npc = this.npcs.get(index);
+      if (npc) {
+        npc.playAnimation(spawn.animations.interact, true);
+      }
+    }
+
+    // Priority 1: Quest Graph
     if (spawn.questGraph) {
       this.executeQuestGraph(spawn.questGraph, spawn.name || "NPC");
       return;
     }
 
+    // Priority 2: Requirements & Success/Fail Dialogue (Simple Quest)
+    // TODO: Add requirement check logic here if needed.
+    // For now, if we have success dialogue, we assume we might want to show it?
+    // Or should we show default dialogue?
+    // Let's implement the standard fallback:
+
+    // Check if we have standard dialogue to play
+    if (spawn.dialogue?.length) {
+      const dialogueId = `npc_${index}_default`;
+      dialogueManager.register({
+        id: dialogueId,
+        lines: spawn.dialogue,
+      });
+      dialogueManager.play(dialogueId);
+      return;
+    }
+
+    // Fallback/Legacy: Success dialogue if no standard dialogue
     if (spawn.successDialogue?.length) {
       const dialogueId = `npc_${index}_success`;
       dialogueManager.register({
@@ -657,6 +714,7 @@ export class Level extends BaseLevel {
   ): void {
     this.cleanupEditor();
     this.isEditorMode = true;
+    DialogueManager.getInstance().stop();
     this.onEntitySelected = onSelect;
     this.onTransformChanged = onChange;
 
@@ -668,11 +726,22 @@ export class Level extends BaseLevel {
       portal.editorMode = true;
     });
 
+    // Disable physics for all props
+    this.props.forEach((prop) => {
+      if (prop.physicsBody) {
+        prop.physicsBody.dispose();
+      }
+      prop.getChildMeshes().forEach((m) => {
+        if (m.physicsBody) m.physicsBody.dispose();
+      });
+    });
+
     this.setupGizmoManager();
     this.setupEditorPointerEvents();
   }
 
   private setupGizmoManager(): void {
+    console.log("[Level] Setting up GizmoManager...");
     this.gizmoManager = new GizmoManager(this.scene);
     this.gizmoManager.positionGizmoEnabled = true;
     this.gizmoManager.rotationGizmoEnabled = false;
@@ -681,16 +750,31 @@ export class Level extends BaseLevel {
     this.gizmoManager.clearGizmoOnEmptyPointerEvent = false;
 
     this.setupGizmoObservers();
+    console.log("[Level] GizmoManager setup complete.");
   }
 
   private setupEditorPointerEvents(): void {
-    this.scene.onPointerDown = (
-      _evt: IPointerEvent,
-      pickResult: PickingInfo,
-      _type: PointerEventTypes,
-    ) => {
-      this.handleEditorClick(pickResult);
-    };
+    if (this.editorPointerObserver) {
+      this.scene.onPointerObservable.remove(this.editorPointerObserver);
+    }
+
+    this.editorPointerObserver = this.scene.onPointerObservable.add(
+      (pointerInfo) => {
+        // Handle Double Tap for Selection
+        if (pointerInfo.type === PointerEventTypes.POINTERDOUBLETAP) {
+          if (this.isGizmoHovered()) return;
+          if (pointerInfo.pickInfo) {
+            this.handleEditorClick(pointerInfo.pickInfo);
+          }
+          return;
+        }
+
+        // Handle Single Tap (POINTERDOWN) - mostly for gizmo interaction or clearing if needed?
+        // User requested selection ONLY on Double Click.
+        // Gizmo interaction is handled by GizmoManager internally.
+      },
+      PointerEventTypes.POINTERDOUBLETAP,
+    );
   }
 
   private handleEditorClick(pickResult: PickingInfo): void {
@@ -786,6 +870,12 @@ export class Level extends BaseLevel {
       obs.remove();
     }
     this.gizmoObservers.length = 0;
+
+    if (this.editorPointerObserver) {
+      this.scene.onPointerObservable.remove(this.editorPointerObserver);
+      this.editorPointerObserver = null;
+    }
+
     this.gizmoManager?.dispose();
     this.gizmoManager = undefined;
   }
@@ -793,6 +883,20 @@ export class Level extends BaseLevel {
   // ==========================================================================
   // PUBLIC EDITOR API
   // ==========================================================================
+
+  public highlightEntity(index: number): void {
+    if (!this.gizmoManager) return;
+
+    if (index === -1) {
+      this.gizmoManager.attachToMesh(null);
+      return;
+    }
+
+    const mesh = this.entityMeshIndex.get(index);
+    if (mesh) {
+      this.gizmoManager.attachToMesh(mesh);
+    }
+  }
 
   public setGizmoMode(mode: "position" | "rotation" | "scale"): void {
     if (!this.gizmoManager) return;

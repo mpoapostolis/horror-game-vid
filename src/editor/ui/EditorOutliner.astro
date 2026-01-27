@@ -3,53 +3,66 @@
 ---
 
 <aside
-  class="w-64 blender-panel shrink-0 z-10 flex flex-col h-full overflow-hidden"
+  class="w-64 bg-[var(--bg-panel)] border-r border-[var(--border-dark)] shrink-0 z-10 flex flex-col h-full overflow-hidden select-none"
 >
   <!-- Header -->
-  <div class="blender-header select-none justify-between h-auto py-1">
-    <div class="flex items-center gap-2">
-      <span class="text-[14px]">📑</span>
-      <span class="hidden md:inline">Outliner</span>
+  <div
+    class="h-10 px-3 border-b border-[var(--border-light)] flex items-center justify-between bg-[var(--bg-header)]"
+  >
+    <div
+      class="flex items-center gap-2 text-[var(--text-dim)] hover:text-[var(--text-main)] transition-colors"
+    >
+      <span class="text-sm">📑</span>
+      <span class="text-xs font-bold uppercase tracking-wider">Outliner</span>
     </div>
 
-    <div class="flex gap-1 items-center">
-      <input
-        type="text"
-        placeholder="Filter..."
-        class="bg-[var(--bg-input)] border border-[var(--border-light)] rounded px-1.5 py-0.5 text-[9px] w-20 text-[var(--text-main)] focus:w-28 transition-all outline-none"
-        x-model="outlinerSearch"
-      />
+    <!-- Quick Actions -->
+    <div class="flex items-center gap-1" x-data="{ showMenu: false }">
+      <div class="relative">
+        <input
+          type="text"
+          placeholder="Find..."
+          class="bg-[var(--bg-input)] border border-[var(--border-light)] rounded-sm pl-2 pr-1 py-0.5 text-[10px] w-20 focus:w-28 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:border-[var(--accent-primary)] focus:bg-[var(--bg-input-focus)] transition-all outline-none"
+          x-model="outlinerSearch"
+        />
+      </div>
 
-      <!-- Quick Add Menu -->
-      <div class="relative" x-data="{ showMenu: false }">
+      <div class="relative">
         <button
           @click="showMenu = !showMenu"
-          class="text-[var(--text-muted)] hover:text-white px-1.5 py-0.5 hover:bg-[var(--bg-input-hover)] rounded transition-colors"
+          class="w-5 h-5 flex items-center justify-center rounded-sm hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border border-transparent hover:border-[var(--border-light)]"
           title="Add Entity"
         >
-          <span class="text-xs font-bold">+</span>
+          <span class="text-xs font-bold leading-none">+</span>
         </button>
+
+        <!-- Dropdown -->
         <div
           x-show="showMenu"
           @click.away="showMenu = false"
-          x-transition
-          class="absolute right-0 top-full mt-1 bg-[var(--bg-panel)] border border-[var(--border-light)] rounded shadow-lg z-50 min-w-[100px]"
+          x-transition.opacity.duration.100ms
+          class="absolute right-0 top-full mt-1 bg-[var(--bg-panel)] border border-[var(--border-light)] rounded shadow-xl z-50 min-w-[120px] overflow-hidden py-1"
         >
+          <div
+            class="px-2 py-1 text-[9px] font-bold text-[var(--text-dim)] uppercase tracking-wider border-b border-[var(--border-light)]/50 mb-1"
+          >
+            Add New
+          </div>
           <button
             @click="addEntity('npc'); showMenu = false"
-            class="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[var(--bg-input-hover)] flex items-center gap-2"
+            class="w-full text-left px-3 py-1.5 text-[11px] text-[var(--text-main)] hover:bg-[var(--accent-primary)] hover:text-white flex items-center gap-2 transition-colors"
           >
             <span>👤</span> NPC
           </button>
           <button
             @click="addEntity('portal'); showMenu = false"
-            class="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[var(--bg-input-hover)] flex items-center gap-2"
+            class="w-full text-left px-3 py-1.5 text-[11px] text-[var(--text-main)] hover:bg-[var(--accent-primary)] hover:text-white flex items-center gap-2 transition-colors"
           >
             <span>🚪</span> Portal
           </button>
           <button
             @click="addEntity('prop'); showMenu = false"
-            class="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[var(--bg-input-hover)] flex items-center gap-2"
+            class="w-full text-left px-3 py-1.5 text-[11px] text-[var(--text-main)] hover:bg-[var(--accent-primary)] hover:text-white flex items-center gap-2 transition-colors"
           >
             <span>📦</span> Prop
           </button>
@@ -58,72 +71,62 @@
     </div>
   </div>
 
-  <!-- Scene Graph List -->
-  <div class="flex-1 overflow-y-auto p-0 bg-[var(--bg-panel)]">
+  <!-- List -->
+  <div class="flex-1 overflow-y-auto custom-scrollbar bg-[var(--bg-panel)]">
+    <!-- Empty State -->
     <template x-if="!config.entities || config.entities.length === 0">
       <div
-        class="flex flex-col items-center justify-center h-full text-[var(--text-dim)] select-none opacity-50"
+        class="flex flex-col items-center justify-center h-40 text-[var(--text-muted)] opacity-60"
       >
-        <span class="text-2xl mb-2">📦</span>
-        <span class="text-[10px] italic">No entities yet</span>
-        <span class="text-[9px] mt-1">Use + or Asset Browser to add</span>
+        <span class="text-2xl mb-2 grayscale opacity-50">📦</span>
+        <span class="text-[10px] font-medium">Empty Scene</span>
       </div>
     </template>
 
-    <div class="mb-0.5">
-      <!-- Environment Entry (Distinct from entities) -->
+    <div class="py-1">
+      <template x-for="(entity, idx) in config.entities" :key="idx">
+        <div
+          x-show="!outlinerSearch || getEntityName(entity).toLowerCase().includes(outlinerSearch.toLowerCase())"
+          @click="selectEntity(idx)"
+          class="group relative flex items-center h-7 px-2 cursor-pointer transition-colors border-l-2"
+          :class="selectedEntityIdx === idx 
+            ? 'bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]' 
+            : 'border-transparent hover:bg-[var(--bg-hover)]'"
+        >
+          <!-- Icon -->
+          <span
+            class="mr-2 text-[12px] opacity-70 w-5 text-center group-hover:opacity-100 transition-opacity"
+            x-text="getIcon(entity.type)"></span>
 
-      <!-- Entities List -->
-      <div class="flex flex-col">
-        <template x-for="(entity, idx) in config.entities" :key="idx">
-          <div
-            x-show="!outlinerSearch || getEntityName(entity).toLowerCase().includes(outlinerSearch.toLowerCase())"
-            @click="selectEntity(idx)"
-            class="relative flex items-center h-8 px-3 cursor-pointer group transition-colors select-none border-b border-[var(--border-field)]"
-            :class="selectedEntityIdx === idx ? 'bg-[var(--accent-secondary)]/20' : 'hover:bg-[var(--bg-hover)]'"
+          <!-- Name -->
+          <span
+            class="truncate text-[11px] flex-1 font-medium transition-colors"
+            :class="selectedEntityIdx === idx ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-main)]'"
+            x-text="getEntityName(entity)"></span>
+
+          <!-- Delete Action (Hover only) -->
+          <button
+            @click.stop="removeEntity(idx)"
+            class="hidden group-hover:flex items-center justify-center w-5 h-5 rounded hover:bg-red-500/20 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-all ml-1"
+            title="Delete"
           >
-            <!-- Selection Indicator -->
-            <div
-              class="absolute left-0 top-0 bottom-0 w-[3px]"
-              :class="selectedEntityIdx === idx ? 'bg-[var(--accent-secondary)]' : 'bg-transparent'"
-            >
-            </div>
-
-            <span
-              class="mr-2 text-[12px] w-5 text-center"
-              :class="{
-                'icon-npc': entity.type === 'npc',
-                'icon-prop': entity.type === 'prop',
-                'icon-portal': entity.type === 'portal'
-              }"
-              x-text="getIcon(entity.type)"></span>
-
-            <span
-              class="truncate text-[11px] flex-1 font-medium"
-              :class="selectedEntityIdx === idx ? 'text-white' : 'text-[var(--text-muted)] group-hover:text-[var(--text-main)]'"
-              x-text="getEntityName(entity)"></span>
-
-            <button
-              @click.stop="removeEntity(idx)"
-              class="hidden group-hover:flex items-center justify-center w-5 h-5 rounded hover:bg-black/40 text-[10px] text-red-400/70 hover:text-red-400 transition-colors ml-2"
-              title="Delete Entity"
-            >
-              ×
-            </button>
-          </div>
-        </template>
-      </div>
+            ×
+          </button>
+        </div>
+      </template>
     </div>
   </div>
 
-  <!-- Bottom: Asset Add Button -->
-  <div class="p-2 border-t border-[var(--border-dark)] bg-[var(--bg-header)]">
+  <!-- Bottom Action -->
+  <div class="p-2 border-t border-[var(--border-light)] bg-[var(--bg-app)]">
     <button
       @click="openAssetBrowser()"
-      class="w-full bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] text-white py-1.5 rounded flex items-center justify-center gap-2 transition-all text-[11px] font-bold shadow-sm"
-      title="Open Asset Browser to add new objects"
+      class="w-full py-1.5 rounded-sm bg-[var(--bg-input)] hover:bg-[var(--bg-input-hover)] border border-[var(--border-light)] hover:border-[var(--text-muted)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 group"
     >
-      <span>+</span> Add from Assets
+      <span class="group-hover:scale-110 transition-transform duration-200"
+        >+</span
+      >
+      <span>Add from Assets</span>
     </button>
   </div>
 </aside>

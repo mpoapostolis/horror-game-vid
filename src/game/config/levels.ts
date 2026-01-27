@@ -86,6 +86,7 @@ export interface NPCSpawn {
     idle?: string;
     interact?: string;
   };
+  interactionSound?: string;
   questGraph?: QuestGraph;
 }
 
