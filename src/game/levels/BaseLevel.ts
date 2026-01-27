@@ -285,7 +285,13 @@ export abstract class BaseLevel {
   }
 
   private updatePipeline(): void {
-    if (!this.pipeline || !this.config.pipeline) return;
+    if (!this.config.pipeline) return;
+
+    // Lazily initialize pipeline if it doesn't exist
+    if (!this.pipeline) {
+      this.setupPipeline();
+      if (!this.pipeline) return;
+    }
 
     const p = this.config.pipeline;
 

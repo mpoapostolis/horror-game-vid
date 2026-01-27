@@ -8,7 +8,7 @@ import {
   PhysicsShapeMesh,
   type Observer,
   type PickingInfo,
-  type IPointerEvent,
+  type PointerInfo,
   PointerEventTypes,
 } from "@babylonjs/core";
 import type {
@@ -108,6 +108,7 @@ export class Level extends BaseLevel {
   private gizmoManager?: GizmoManager;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly gizmoObservers: Observer<any>[] = [];
+  private editorPointerObserver: Observer<PointerInfo> | null = null;
   private onEntitySelected?: EntitySelectCallback;
   private onTransformChanged?: TransformChangeCallback;
   private isEditorMode = false;
@@ -368,16 +369,22 @@ export class Level extends BaseLevel {
     for (let i = 0; i < this.levelConfig.entities.length; i++) {
       const spawn = this.levelConfig.entities[i];
       if (spawn.type !== "npc") continue;
-      if (this.npcDialogueTriggered.has(i)) continue;
 
       const npc = this.npcs.get(i);
       if (!npc) continue;
 
       const distance = Vector3.Distance(this.player.position, npc.position);
-      if (distance < CONFIG.INTERACTION_RADIUS) {
+      const inRange = distance < CONFIG.INTERACTION_RADIUS;
+      const wasTriggered = this.npcDialogueTriggered.has(i);
+
+      if (inRange && !wasTriggered) {
+        // Player entered range - trigger dialogue
         this.npcDialogueTriggered.add(i);
         this.handleNPCInteraction(i, spawn);
         return;
+      } else if (!inRange && wasTriggered) {
+        // Player left range - allow re-trigger next time
+        this.npcDialogueTriggered.delete(i);
       }
     }
   }
@@ -419,7 +426,16 @@ export class Level extends BaseLevel {
 
     // Priority 1: Quest Graph
     if (spawn.questGraph) {
-      this.executeQuestGraph(spawn.questGraph, spawn.name || "NPC");
+      this.executeQuestGraph(spawn.questGraph, spawn.name || "NPC", () => {
+        // Return NPC to idle when graph completes
+        const npc = this.npcs.get(index);
+        if (npc) {
+          npc.playAnimation(spawn.animations?.idle || "idle", true);
+        }
+        this.currentInteractingNPC = null;
+        // Don't delete from npcDialogueTriggered here - let checkNPCProximity
+        // handle it when player leaves radius to prevent immediate re-trigger
+      });
       return;
     }
 
@@ -540,8 +556,15 @@ export class Level extends BaseLevel {
   // QUEST GRAPH EXECUTION
   // ==========================================================================
 
-  private executeQuestGraph(graph: QuestGraph, speakerName: string): void {
-    if (!graph.nodes?.length) return;
+  private executeQuestGraph(
+    graph: QuestGraph,
+    speakerName: string,
+    onComplete?: () => void,
+  ): void {
+    if (!graph.nodes?.length) {
+      onComplete?.();
+      return;
+    }
 
     const dialogueManager = DialogueManager.getInstance();
     const linkMap = this.parseQuestLinks(graph.links ?? []);
@@ -561,12 +584,16 @@ export class Level extends BaseLevel {
 
     const runStep = (nodeId: number): void => {
       const node = getNode(nodeId);
-      if (!node) return;
+      if (!node) {
+        onComplete?.();
+        return;
+      }
 
       switch (node.type) {
         case "Dialog/Start": {
           const next = getNextNode(node);
           if (next) runStep(next.id);
+          else onComplete?.();
           break;
         }
 
@@ -580,7 +607,11 @@ export class Level extends BaseLevel {
             id: dialogueId,
             lines,
             onComplete: () => {
-              if (nextNode) runStep(nextNode.id);
+              if (nextNode) {
+                runStep(nextNode.id);
+              } else {
+                onComplete?.();
+              }
             },
           });
           dialogueManager.play(dialogueId);
@@ -594,6 +625,7 @@ export class Level extends BaseLevel {
             speakerName,
             getNextNode,
             runStep,
+            onComplete,
           );
           break;
         }
@@ -603,6 +635,7 @@ export class Level extends BaseLevel {
           const result = props?.checkType === "Level" || Math.random() > 0.1;
           const next = getNextNode(node, result ? 0 : 1);
           if (next) runStep(next.id);
+          else onComplete?.();
           break;
         }
 
@@ -613,17 +646,20 @@ export class Level extends BaseLevel {
           console.log(`[Quest] Give: ${props?.giveType} x${props?.amount}`);
           const next = getNextNode(node);
           if (next) runStep(next.id);
+          else onComplete?.();
           break;
         }
 
         case "Dialog/End":
           dialogueManager.stop();
+          onComplete?.();
           break;
       }
     };
 
     const startNode = graph.nodes.find((n) => n.type === "Dialog/Start");
     if (startNode) runStep(startNode.id);
+    else onComplete?.();
   }
 
   private parseQuestLinks(links: QuestGraphLink[]): Map<number, ParsedLink> {
@@ -678,18 +714,35 @@ export class Level extends BaseLevel {
     speakerName: string,
     getNextNode: (node: QuestGraphNode, slot?: number) => QuestGraphNode | null,
     runStep: (id: number) => void,
+    onComplete?: () => void,
   ): void {
     const dialogueManager = DialogueManager.getInstance();
     const props = node.properties as
       | { prompt?: string; options?: string[] }
       | undefined;
-    const prompt = props?.prompt ?? "Choose...";
-    const options = props?.options ?? ["Yes", "No"];
+    const wv = node.widgets_values as string[] | undefined;
 
-    const choices = options.slice(0, 3).map((opt, idx) => ({
-      text: opt || `Option ${idx + 1}`,
-      value: idx,
-    }));
+    // Widget order: [0]=prompt, [1]=option1, [2]=option2, [3]=option3
+    const prompt = wv?.[0] ?? props?.prompt ?? "Choose...";
+    const rawOptions: string[] = wv
+      ? [wv[1] ?? "", wv[2] ?? "", wv[3] ?? ""]
+      : props?.options ?? ["Yes", "No"];
+
+    // Build choices, preserving slot indices for non-empty options
+    const choices = rawOptions
+      .map((opt, idx) => ({
+        text: opt,
+        value: idx,
+      }))
+      .filter((c) => c.text && c.text.trim() !== "");
+
+    // Fallback: if no valid choices, try to follow first connected output
+    if (choices.length === 0) {
+      const next = getNextNode(node, 0);
+      if (next) runStep(next.id);
+      else onComplete?.();
+      return;
+    }
 
     const dialogueId = `quest_choice_${Date.now()}_${nodeId}`;
     dialogueManager.register({
@@ -698,7 +751,10 @@ export class Level extends BaseLevel {
       onChoice: (slotIndex: number) => {
         const next = getNextNode(node, slotIndex);
         if (next) runStep(next.id);
-        else dialogueManager.stop();
+        else {
+          dialogueManager.stop();
+          onComplete?.();
+        }
       },
     });
     dialogueManager.play(dialogueId);

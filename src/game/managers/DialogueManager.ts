@@ -100,7 +100,13 @@ export class DialogueManager {
   }
 
   stop(): void {
-    this.end();
+    this.cleanup();
+    this.active = false;
+    this.current = undefined;
+    this.lineIndex = 0;
+    this.isTyping = false;
+    this.waitingForInput = false;
+    this.hide();
   }
 
   isActive(): boolean {
@@ -259,7 +265,11 @@ export class DialogueManager {
     const previousId = this.current?.id;
 
     if (this.current?.onChoice) {
-      this.current.onChoice(value);
+      try {
+        this.current.onChoice(value);
+      } catch (e) {
+        console.error("[DialogueManager] Error in onChoice callback:", e);
+      }
     }
 
     // Only advance if the dialogue hasn't changed (e.g. onChoice didn't start a new dialogue)
@@ -304,13 +314,38 @@ export class DialogueManager {
   }
 
   private show(): void {
-    this.overlay?.classList.remove("opacity-0", "translate-y-8", "scale-95");
-    this.overlay?.classList.add("opacity-100", "translate-y-0", "scale-100");
+    if (!this.overlay) return;
+    this.overlay.style.display = "flex";
+    // Force reflow
+    void this.overlay.offsetWidth;
+
+    this.overlay.classList.remove(
+      "opacity-0",
+      "translate-y-8",
+      "scale-95",
+      "pointer-events-none",
+    );
+    this.overlay.classList.add("opacity-100", "translate-y-0", "scale-100");
   }
 
   private hide(): void {
-    this.overlay?.classList.remove("opacity-100", "translate-y-0", "scale-100");
-    this.overlay?.classList.add("opacity-0", "translate-y-8", "scale-95");
+    if (!this.overlay) return;
+    this.overlay.classList.remove("opacity-100", "translate-y-0", "scale-100");
+    this.overlay.classList.add(
+      "opacity-0",
+      "translate-y-8",
+      "scale-95",
+      "pointer-events-none",
+    );
+
+    // Safety: ensure it's not clickable
+
+    // Optional: Hide display after transition
+    setTimeout(() => {
+      if (!this.active && this.overlay) {
+        this.overlay.style.display = "none";
+      }
+    }, 500);
   }
 
   // ==================== LIFECYCLE ====================
@@ -325,17 +360,29 @@ export class DialogueManager {
   }
 
   private end(): void {
-    if (this.current?.onComplete) {
-      this.current.onComplete();
-    }
+    const callback = this.current?.onComplete;
 
+    // Clear state BEFORE calling onComplete so a new dialogue can be started
     this.cleanup();
     this.active = false;
     this.current = undefined;
     this.lineIndex = 0;
     this.isTyping = false;
     this.waitingForInput = false;
-    this.hide();
+
+    // Call onComplete - this may start a new dialogue
+    if (callback) {
+      try {
+        callback();
+      } catch (e) {
+        console.error("[DialogueManager] Error in onComplete callback:", e);
+      }
+    }
+
+    // Only hide if no new dialogue was started during onComplete
+    if (!this.active) {
+      this.hide();
+    }
   }
 
   // ==================== UI CREATION ====================

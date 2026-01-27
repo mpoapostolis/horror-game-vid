@@ -27,9 +27,15 @@ export interface NPCReward {
   itemId?: string;
 }
 
-export interface DialogueLine {
-  speaker: string;
+export interface DialogueChoice {
   text: string;
+  value: number;
+}
+
+export interface DialogueLine {
+  speaker?: string;
+  text: string;
+  choices?: DialogueChoice[];
 }
 
 // Quest Graph Types (LiteGraph format)
@@ -80,6 +86,7 @@ export interface NPCSpawn {
   scale?: number;
   requirements?: NPCRequirement[];
   rewards?: NPCReward[];
+  dialogue?: DialogueLine[];
   failDialogue?: DialogueLine[];
   successDialogue?: DialogueLine[];
   animations?: {

@@ -810,14 +810,25 @@ export function editorLogic() {
     },
 
     saveQuestGraph(data: any) {
-      if (this.selectedEntityIdx === -1) return;
+      if (this.selectedEntityIdx === -1) {
+        console.error("[EditorLogic] Cannot save graph: No entity selected");
+        return;
+      }
 
       const entity = this.config.entities[this.selectedEntityIdx];
       if (entity && isNPCSpawn(entity)) {
-        entity.questGraph = data;
         console.log("Saved Quest Graph for NPC:", entity.name, data);
+
+        // Force reactivity by creating a new object ref
+        this.config.entities[this.selectedEntityIdx] = {
+          ...entity,
+          questGraph: data,
+        };
+
         // Save immediately (don't wait for auto-save)
         this.saveCurrentLevel();
+      } else {
+        console.error("[EditorLogic] Selected entity is not an NPC:", entity);
       }
     },
 

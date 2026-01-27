@@ -12,9 +12,23 @@
         setTimeout(() => {
             window.initLiteGraph();
             const ent = config.entities[selectedEntityIdx];
-            window.loadGraphData(ent?.questGraph);
-        }, 100);
-    }
+            console.log("
+  [QuestEditor]
+  Opening
+  for
+  Entity:",
+  selectedEntityIdx,
+  ent);
+  console.log("[QuestEditor]
+  Graph
+  Data
+  to
+  Load:",
+  ent?.questGraph);
+  window.loadGraphData(ent?.questGraph);
+  },
+  100);
+  }
   })"
 >
   <!-- Toolbar / Header -->
@@ -112,7 +126,7 @@
       </button>
 
       <button
-        @click="saveQuestGraph(window.getGraphData()); closeQuestEditor()"
+        @click="const data = window.getGraphData(); console.log('[QuestEditor] Saving:', data); saveQuestGraph(data); closeQuestEditor()"
         class="blender-btn bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]/50 hover:bg-[var(--accent-primary)]/20 text-[var(--accent-primary)]"
         title="Save & Close"
       >
@@ -341,7 +355,9 @@
   };
 
   window.getGraphData = function () {
-    return graph ? graph.serialize() : null;
+    const data = graph ? graph.serialize() : null;
+    console.log("[QuestEditor] getGraphData:", data);
+    return data;
   };
 
   // ═══════════════════════════════════════════════════════════
