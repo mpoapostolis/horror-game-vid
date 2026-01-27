@@ -1,9 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import EditorOutliner from "../components/editor/EditorOutliner.astro";
-import EditorViewport from "../components/editor/EditorViewport.astro";
-import EditorInspector from "../components/editor/EditorInspector.astro";
-import EditorModals from "../components/editor/EditorModals.astro";
+import EditorOutliner from "../editor/ui/EditorOutliner.astro";
+import EditorViewport from "../editor/ui/EditorViewport.astro";
+import EditorInspector from "../editor/ui/EditorInspector.astro";
+import EditorModals from "../editor/ui/EditorModals.astro";
 import "../styles/global.css";
 ---
 
@@ -22,7 +22,7 @@ import "../styles/global.css";
 
 <script>
   import Alpine from "alpinejs";
-  import { editorLogic } from "../components/editor/EditorLogic";
+  import { editorLogic } from "../editor/logic/EditorLogic";
 
   // Register Alpine logic
   Alpine.data("levelEditor", editorLogic);

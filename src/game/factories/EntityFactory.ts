@@ -3,7 +3,7 @@ import { ENTITIES } from "../config/entities";
 import type { NPCConfig } from "../config/entities";
 import { NPC, type NPCAnimations } from "../entities/NPC";
 import { Portal } from "../entities/Portal";
-import type { AssetManager } from "../managers/AssetManager";
+import type { AssetManager } from "../../core/AssetManager";
 
 export interface SpawnNPCOptions {
   entityKey?: string;
@@ -28,7 +28,7 @@ export class EntityFactory {
   constructor(
     scene: Scene,
     shadowGenerator: ShadowGenerator,
-    assetManager: AssetManager
+    assetManager: AssetManager,
   ) {
     this.scene = scene;
     this.shadowGenerator = shadowGenerator;
@@ -41,12 +41,18 @@ export class EntityFactory {
 
     const data = await this.assetManager.loadMesh(config.asset, this.scene);
 
-    return new NPC(data.meshes, data.animationGroups, this.shadowGenerator, position, {
-      scale: scale ?? config.scale,
-      castShadow: config.castShadow,
-      idleAnimation: config.idleAnimation,
-      animations,
-    });
+    return new NPC(
+      data.meshes,
+      data.animationGroups,
+      this.shadowGenerator,
+      position,
+      {
+        scale: scale ?? config.scale,
+        castShadow: config.castShadow,
+        idleAnimation: config.idleAnimation,
+        animations,
+      },
+    );
   }
 
   private resolveNPCConfig(options: SpawnNPCOptions): NPCConfig {
@@ -68,7 +74,7 @@ export class EntityFactory {
     }
 
     throw new Error(
-      `Invalid NPC spawn options: provide either entityKey or asset. Got: ${JSON.stringify(options)}`
+      `Invalid NPC spawn options: provide either entityKey or asset. Got: ${JSON.stringify(options)}`,
     );
   }
 
@@ -83,7 +89,11 @@ export class EntityFactory {
     return `/assets/${path}`;
   }
 
-  spawnPortal(position: Vector3, targetLevel: string, editorMode = false): Portal {
+  spawnPortal(
+    position: Vector3,
+    targetLevel: string,
+    editorMode = false,
+  ): Portal {
     return new Portal(this.scene, position, targetLevel, { editorMode });
   }
 }

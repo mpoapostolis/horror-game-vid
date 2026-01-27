@@ -27,9 +27,15 @@ async function initGame(): Promise<void> {
   }
 
   try {
-    const { Engine } = await import("./core/Engine");
+    const { Engine } = await import("../core/Engine");
     const { LevelManager } = await import("./managers/LevelManager");
-    const { LevelStore } = await import("./managers/LevelStore");
+    const { LevelStore } = await import("../core/LevelStore");
+    const { loadEntitiesConfig } = await import("./config/entities");
+
+    // Load dynamic entity configuration
+    // The user will provide the actual link later.
+    // This will fail silently and use defaults if the URL is invalid.
+    await loadEntitiesConfig("https://strugglecoder.com/api/vxl-config");
 
     const engine = Engine.getInstance(canvas as HTMLCanvasElement);
     await engine.init();
@@ -51,7 +57,8 @@ async function initGame(): Promise<void> {
     });
   } catch (error) {
     console.error("Game initialization failed:", error);
-    const message = error instanceof Error ? error.message : "Unknown error occurred";
+    const message =
+      error instanceof Error ? error.message : "Unknown error occurred";
     showError(message);
   }
 }

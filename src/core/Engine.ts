@@ -1,4 +1,8 @@
-import { WebGPUEngine, Engine as BabylonEngine, type AbstractEngine } from "@babylonjs/core";
+import {
+  WebGPUEngine,
+  Engine as BabylonEngine,
+  type AbstractEngine,
+} from "@babylonjs/core";
 import "@babylonjs/loaders";
 
 export class Engine {
@@ -13,6 +17,11 @@ export class Engine {
   }
 
   public static getInstance(canvas?: HTMLCanvasElement): Engine {
+    if (Engine.instance && canvas && Engine.instance.canvas !== canvas) {
+      console.log("[Engine] Canvas changed, disposing old instance");
+      Engine.instance.dispose();
+    }
+
     if (!Engine.instance) {
       if (!canvas) throw new Error("Canvas required for first initialization");
       Engine.instance = new Engine(canvas);

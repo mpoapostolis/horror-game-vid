@@ -18,6 +18,7 @@ export interface PortalConfig {
 
 export type EntityConfig = NPCConfig | PortalConfig;
 
+// Mutable container for entities to support dynamic loading
 export const ENTITIES: Record<string, EntityConfig> = {
   wife: {
     type: "npc",
@@ -40,7 +41,24 @@ export const ENTITIES: Record<string, EntityConfig> = {
     lightIntensity: 5,
     lightRange: 10,
   },
-} as const;
+};
+
+export async function loadEntitiesConfig(url: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Network response was not ok");
+    const data = await response.json();
+
+    // Merge dynamic config into existing ENTITIES
+    // This allows maintaining defaults if the remote config is partial,
+    // or overriding them if keys match.
+    Object.assign(ENTITIES, data);
+    console.log("Dynamic entity configuration loaded:", data);
+  } catch (error) {
+    console.error("Failed to load dynamic entity config:", error);
+    // Silent fail to keep defaults
+  }
+}
 
 export interface DialogueLine {
   speaker: string;
@@ -54,7 +72,7 @@ export interface DialogueConfig {
 }
 
 export interface SpawnConfig {
-  entity: keyof typeof ENTITIES;
+  entity: string; // Relaxed from keyof typeof ENTITIES to support dynamic keys
   position: [number, number, number];
   scale?: number;
   dialogue?: DialogueConfig;
@@ -72,7 +90,7 @@ export interface PortalSpawnConfig {
 }
 
 export function isPortalSpawn(
-  config: SpawnConfig | PortalSpawnConfig
+  config: SpawnConfig | PortalSpawnConfig,
 ): config is PortalSpawnConfig {
   return config.entity === "portal";
 }

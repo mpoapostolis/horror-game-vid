@@ -71,27 +71,6 @@
           <div class="prop-group-header">ENVIRONMENT</div>
 
           <div class="space-y-1 p-2">
-            <!-- Environment Asset -->
-            <div class="flex items-center gap-2">
-              <label
-                class="text-[10px] text-(--text-muted) w-20 text-right shrink-0"
-                >Asset</label
-              >
-              <div class="flex-1 flex gap-1">
-                <input
-                  type="text"
-                  x-model="config.environment.asset"
-                  @change="reloadLevelPromise()"
-                  class="blender-input w-full truncate"
-                />
-                <button
-                  @click="openAssetBrowser(null, 'environment')"
-                  class="px-2 bg-[var(--bg-input)] hover:bg-[var(--bg-input-hover)] border border-[var(--border-light)] rounded select-none text-[10px]"
-                  >📂</button
-                >
-              </div>
-            </div>
-
             <!-- Environment Scale -->
             <div class="flex items-center gap-2">
               <label

@@ -6,8 +6,8 @@
 import type { BaseLevel } from "../levels/BaseLevel";
 import { Level } from "../levels/Level";
 import { DialogueManager } from "./DialogueManager";
-import { InputManager } from "./InputManager";
-import { LevelStore, type LevelMeta } from "./LevelStore";
+import { InputManager } from "../../core/InputManager";
+import { LevelStore, type LevelMeta } from "../../core/LevelStore";
 import type { LevelConfig } from "../config/levels";
 
 export class LevelManager {

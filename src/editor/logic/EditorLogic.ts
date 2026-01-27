@@ -1,7 +1,7 @@
 import { Engine } from "../../core/Engine";
-import { LevelManager } from "../../managers/LevelManager";
-import { LevelStore, type LevelMeta } from "../../managers/LevelStore";
-import { Level } from "../../levels/Level";
+import { LevelManager } from "../../game/managers/LevelManager";
+import { LevelStore, type LevelMeta } from "../../core/LevelStore";
+import { Level } from "../../game/levels/Level";
 import {
   DEFAULT_CONFIG,
   type LevelConfig,
@@ -9,8 +9,8 @@ import {
   type NPCSpawn,
   type PropSpawn,
   type PortalSpawn,
-} from "../../config/levels";
-import { ENTITIES } from "../../config/entities";
+} from "../../game/config/levels";
+import { ENTITIES } from "../../game/config/entities";
 import type { Vector3 } from "@babylonjs/core";
 
 // Type guards for entity discrimination
@@ -138,7 +138,7 @@ function createFallbackConfig(): LevelConfig {
     ambientIntensity: 0.5,
     clearColor: [0.05, 0.05, 0.1, 1],
     fogEnabled: false,
-    environment: { asset: "/assets/room-large.glb", scale: 1 },
+    environment: { asset: "", scale: 1 },
     entities: [],
   };
 }
@@ -431,7 +431,7 @@ export function editorLogic() {
             position: [0, 0, 0],
             rotation: [0, 0, 0],
             scaling: [1, 1, 1],
-            physics: { enabled: false, mass: 0, impostor: "mesh" },
+            physics: { enabled: true, mass: 0, impostor: "mesh" },
           };
       }
     },
@@ -663,7 +663,10 @@ export function editorLogic() {
       if (!(lvl instanceof Level)) return;
 
       const scale = this.getEntityScaleArray(entity);
-      const rotation = (isNPCSpawn(entity) || isPropSpawn(entity)) ? (entity.rotation || [0, 0, 0]) : [0, 0, 0];
+      const rotation =
+        isNPCSpawn(entity) || isPropSpawn(entity)
+          ? entity.rotation || [0, 0, 0]
+          : [0, 0, 0];
       lvl.updateEntityTransform(
         this.selectedEntityIdx,
         entity.position,

@@ -3,7 +3,7 @@
  * All levels are user-created, no built-in levels
  */
 
-import { DEFAULT_CONFIG, type LevelConfig } from "../config/levels";
+import { DEFAULT_CONFIG, type LevelConfig } from "../game/config/levels";
 
 const STORAGE_KEY = "vxl_levels";
 const STORAGE_META_KEY = "vxl_levels_meta";
@@ -38,7 +38,7 @@ export class LevelStore {
         id: "starter",
         name: "My First Level",
         environment: {
-          asset: "/assets/room-large.glb",
+          asset: "",
           scale: 1,
         },
         entities: [],
@@ -69,7 +69,9 @@ export class LevelStore {
   }
 
   getAllMeta(): LevelMeta[] {
-    return Array.from(this.meta.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    return Array.from(this.meta.values()).sort(
+      (a, b) => b.updatedAt - a.updatedAt,
+    );
   }
 
   getFirst(): LevelConfig | undefined {
@@ -91,7 +93,7 @@ export class LevelStore {
       id,
       name,
       environment: {
-        asset: "/assets/room-large.glb",
+        asset: "",
         scale: 1,
       },
       entities: [],
