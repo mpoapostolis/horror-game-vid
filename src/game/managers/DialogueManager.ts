@@ -11,6 +11,8 @@ import { ScriptManager } from "./ScriptManager";
 export interface DialogueChoice {
   text: string;
   value: number;
+  met?: boolean;
+  conditionText?: string;
 }
 
 export interface DialogueLine {
@@ -157,21 +159,16 @@ export class DialogueManager {
       // For now, assume choices are just buttons.
       const options = line.options.map((opt, idx) => ({
         text: opt.text,
-        value: idx, // We'll store the index to look up target later?
-        // No, DialogueManager passes number back.
-        // We need to know THE TARGET.
-        // But DialogueManager only handles simple value return.
-        // Let's store the targets temporarily in ScriptManager or here.
-        // We'll pass the TARGET STRING as the value if we assume value is any?
-        // DialogueChoice.value is number.
-        // So we need to map index -> target in ScriptManager or local state.
+        value: idx,
+        met: opt.met,
+        conditionText: opt.conditionText,
       }));
 
       // We need to persist these targets to know where to jump
       this.currentChoiceTargets = line.options.map((o) => o.target);
 
       this.typeText({
-        text: line.prompt || "...",
+        text: "...",
         choices: options,
       });
     }
@@ -246,7 +243,8 @@ export class DialogueManager {
     }
 
     // Use passed line, stored currentLine, or fall back to dialogue lines
-    const activeLine = line ?? this.currentLine ?? this.current?.lines[this.lineIndex];
+    const activeLine =
+      line ?? this.currentLine ?? this.current?.lines[this.lineIndex];
     if (!activeLine) return;
 
     if (this.textEl) this.textEl.textContent = activeLine.text;
@@ -322,15 +320,19 @@ export class DialogueManager {
     for (const choice of choices) {
       const btn = document.createElement("button");
       btn.textContent = choice.text;
+
+      const isMet = choice.met !== false; // Default true if undefined
+
       btn.className = `
         px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50
         rounded text-sm font-bold uppercase tracking-wide transition-all
         hover:scale-105 active:scale-95 backdrop-blur-md shadow-lg
+        ${!isMet ? "opacity-50 grayscale cursor-not-allowed border-red-500/30" : ""}
       `.trim();
 
       btn.onclick = (e) => {
         e.stopPropagation();
-        this.handleChoiceSelection(choice.value);
+        this.handleChoiceSelection(choice.value, choice);
       };
 
       container.appendChild(btn);
@@ -340,8 +342,25 @@ export class DialogueManager {
     this.overlay.appendChild(container);
   }
 
-  private handleChoiceSelection(value: number): void {
+  private handleChoiceSelection(value: number, choice?: DialogueChoice): void {
     if (this.isScriptMode) {
+      // Check if requirement met
+      if (choice && choice.met === false) {
+        // Feedback
+        const feedback = `You need ${choice.conditionText || "something else"}!`;
+        this.audio.play("deny", false, 0.5); // Assume existence of a deny sound or just use none
+
+        // Show feedback in text element
+        if (this.textEl) {
+          this.textEl.textContent = feedback;
+          this.textEl.classList.add("text-red-400");
+          setTimeout(() => {
+            if (this.textEl) this.textEl.classList.remove("text-red-400");
+          }, 1000);
+        }
+        return;
+      }
+
       // value is index
       const target = this.currentChoiceTargets[value];
       if (target) {

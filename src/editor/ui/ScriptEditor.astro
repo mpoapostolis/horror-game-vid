@@ -45,12 +45,13 @@
           class="appearance-none bg-[#333] text-gray-300 text-xs pl-3 pr-8 py-1.5 rounded border border-transparent hover:border-[#555] focus:border-emerald-500 outline-none cursor-pointer transition-all"
         >
           <option value="">Load Template...</option>
-          <option value="basic">📝 Basic Dialogue</option>
+          <option value="tutorial">🔰 Scripting Tutorial</option>
           <option value="shop">💰 Merchant Shop</option>
-          <option value="reward">🎁 Quest Reward</option>
-          <option value="check">❓ Stat Check</option>
-          <option value="simple_quest">⚡ Simple Quest (Start/Return)</option>
-          <option value="quest">⚔️ Super Quest (Branching)</option>
+          <option value="dragon_slayer">🐉 Dragon Slayer (Quest)</option>
+          <option value="riddle">🧙‍♂️ Sphinx Riddle</option>
+          <option value="door">🚪 Locked Door Check</option>
+          <option value="healer">🏥 Healer Service</option>
+          <option value="auto_flow">⚡ Auto-Flow Example</option>
         </select>
 
         <div class="h-4 w-px bg-[#444]"></div>
@@ -108,31 +109,125 @@
 <script>
   import * as monaco from "monaco-editor";
 
-  // --- 1. THE MASSIVE DATABASE (200 Items) ---
+  // --- 1. THE MASSIVE DATABASE (100+ Items) ---
   const GAME_DB: Record<string, { type: string; desc: string }> = {
-    hp: { type: "Stat", desc: "Current Health Points" },
-    max_hp: { type: "Stat", desc: "Maximum Health Cap" },
-    mp: { type: "Stat", desc: "Mana Points" },
-    stamina: { type: "Stat", desc: "Endurance for running/attacks" },
-    xp: { type: "Stat", desc: "Experience Points" },
-    level: { type: "Stat", desc: "Character Level" },
-    karma: { type: "Stat", desc: "Alignment (-100 to 100)" },
-    strength: { type: "Attribute", desc: "Physical Power" },
-    dexterity: { type: "Attribute", desc: "Agility and Speed" },
-    intelligence: { type: "Attribute", desc: "Magic Power" },
-    gold: { type: "Currency", desc: "Standard Gold Coins" },
-    gems: { type: "Currency", desc: "Premium Currency" },
-    silver: { type: "Currency", desc: "Lesser Coinage" },
-    sword_rusty: { type: "Weapon", desc: "Old rusty blade. DMG: 5" },
-    sword_iron: { type: "Weapon", desc: "Standard soldier sword. DMG: 12" },
-    sword_steel: { type: "Weapon", desc: "Refined steel sword. DMG: 20" },
-    sword_excalibur: { type: "Legendary", desc: "The holy blade. DMG: 100" },
-    key_dungeon_1: { type: "Key", desc: "Opens the Crypt" },
-  };
+    // Stats & Attributes
+    hp: { type: "Stat", desc: "❤️ Current Health Points" },
+    max_hp: { type: "Stat", desc: "🩸 Maximum Health Cap" },
+    mp: { type: "Stat", desc: "✨ Mana/Magic Points" },
+    stamina: { type: "Stat", desc: "🔋 Physical Energy" },
+    xp: { type: "Stat", desc: "📖 Experience Points" },
+    level: { type: "Stat", desc: "🏆 Character Level" },
+    karma: { type: "Stat", desc: "⚖️ Alignment (-100 to 100)" },
+    strength: { type: "Attribute", desc: "💪 Physical Power" },
+    dexterity: { type: "Attribute", desc: "⚡ Speed and Agility" },
+    intelligence: { type: "Attribute", desc: "🧠 Magic/Mental Power" },
+    luck: { type: "Attribute", desc: "🍀 Critical chance and loot drops" },
 
-  // Add more items to simulate large DB
-  for (let i = 1; i <= 50; i++)
-    GAME_DB[`generic_item_${i}`] = { type: "Trash", desc: "Useless junk" };
+    // Currencies
+    gold: { type: "Currency", desc: "💰 Standard Gold Coins" },
+    gems: { type: "Currency", desc: "💎 Premium Currency" },
+    silver: { type: "Currency", desc: "🪙 Lesser Coinage" },
+    tokens: { type: "Currency", desc: "🎟️ Event Tokens" },
+
+    // Weapons (Swords)
+    sword_rusty: { type: "Weapon", desc: "🗡️ Old rusty blade. DMG: 5" },
+    sword_iron: { type: "Weapon", desc: "⚔️ Standard soldier sword. DMG: 12" },
+    sword_steel: { type: "Weapon", desc: "⚔️ Refined steel sword. DMG: 20" },
+    sword_excalibur: { type: "Legendary", desc: "✨ The Holy Blade. DMG: 100" },
+    dagger_shadow: { type: "Weapon", desc: "🔪 Assassin's blade. Fast / Crit" },
+    axe_battle: { type: "Weapon", desc: "🪓 Heavy double-edged axe. DMG: 35" },
+    staff_mage: { type: "Weapon", desc: "🧙‍♂️ Wooden staff. +10 INT" },
+    bow_long: { type: "Weapon", desc: "🏹 Ranged weapon. Req: Arrow" },
+    hammer_war: { type: "Weapon", desc: "🔨 Crushing hammer. DMG: 45" },
+
+    // Armor
+    shield_wood: { type: "Armor", desc: "🛡️ Basic wooden shield" },
+    shield_iron: { type: "Armor", desc: "🛡️ Sturdy iron shield" },
+    helmet_iron: { type: "Armor", desc: "🪖 Protects the head" },
+    chest_plate: { type: "Armor", desc: "🧥 Heavy iron chestplate" },
+    boots_leather: { type: "Armor", desc: "🥾 Soft leather boots" },
+    gauntlets_steel: { type: "Armor", desc: "🧤 Heavy steel protection" },
+
+    // Consumables
+    potion_hp_small: { type: "Potion", desc: "🧪 Heals 25 HP" },
+    potion_hp_large: { type: "Potion", desc: "🧪 Heals 100 HP" },
+    potion_mp_small: { type: "Potion", desc: "🧪 Restores 25 Mana" },
+    potion_elixir: { type: "Potion", desc: "🧪 Full HP/MP Restore" },
+    food_bread: { type: "Food", desc: "🍞 Fresh bread. Heals 5 HP" },
+    food_meat: { type: "Food", desc: "🍖 Cooked steak. Heals 20 HP" },
+    food_apple: { type: "Food", desc: "🍎 Tasty fruit. Heals 2 HP" },
+    herb_red: { type: "Material", desc: "🌿 Used for HP potions" },
+    herb_blue: { type: "Material", desc: "🌿 Used for MP potions" },
+
+    // Materials
+    mat_wood: { type: "Material", desc: "🪵 Raw timber" },
+    mat_stone: { type: "Material", desc: "🪨 Construction stone" },
+    mat_iron_ore: { type: "Material", desc: "⛏️ Unrefined iron" },
+    mat_leather: { type: "Material", desc: "🐄 Raw animal hide" },
+    mat_cloth: { type: "Material", desc: "🧵 Useful for tailoring" },
+    mat_essence: { type: "Material", desc: "🔮 Pure magical energy" },
+
+    // Quest Items
+    key_dungeon: { type: "Quest", desc: "🗝️ Opens the local dungeon" },
+    key_chest: { type: "Quest", desc: "🔑 Opens a treasure chest" },
+    relic_ancient: { type: "Quest", desc: "🏺 A dusty old artifact" },
+    map_treasure: { type: "Quest", desc: "📜 X marks the spot!" },
+    letter_king: { type: "Quest", desc: "✉️ A royal message" },
+    dragon_head: { type: "Quest", desc: "🐉 Proof of the kill" },
+    gem_red: { type: "Quest", desc: "🔴 A glowing crimson gem" },
+    gem_blue: { type: "Quest", desc: "🔵 A glowing cobalt gem" },
+
+    // Trash / Misc
+    junk_bone: { type: "Misc", desc: "🦴 A bleached white bone" },
+    junk_dust: { type: "Misc", desc: "💨 Just a pile of dust" },
+    junk_feather: { type: "Misc", desc: "🪶 A bird feather" },
+    junk_scrap: { type: "Misc", desc: "⚙️ Rusty metal scraps" },
+    junk_trash: { type: "Misc", desc: "🗑️ Useless garbage" },
+
+    // Monsters/Drops (Extra logic vars)
+    wolf_fur: { type: "Drop", desc: "🐺 Warm grey fur" },
+    spider_eye: { type: "Drop", desc: "👁️ Creepy and useful for alchemy" },
+    slime_gel: { type: "Drop", desc: "💧 Sticky blue goo" },
+    rat_tail: { type: "Drop", desc: "🐀 Gross, but someone might want it" },
+
+    // Skills/Spells
+    spell_fireball: { type: "Spell", desc: "🔥 Casts a burst of fire" },
+    spell_heal: { type: "Spell", desc: "✨ Mend wounds with magic" },
+    skill_dash: { type: "Skill", desc: "💨 Quick evasion move" },
+    skill_strike: { type: "Skill", desc: "⚔️ A heavy focused blow" },
+
+    // World States (Flags & Quest Progress)
+    quest_active: { type: "Flag", desc: "🚩 Currently on a mission" },
+    quest_done: { type: "Flag", desc: "✅ Mission accomplished" },
+    quest_dragon_active: { type: "Flag", desc: "🐲 Hunting the Dragon" },
+    quest_dragon_dead: { type: "Flag", desc: "💀 The Dragon is slain" },
+    quest_rats_active: { type: "Flag", desc: "� Clearing the cellar" },
+    quest_rats_done: { type: "Flag", desc: "🌾 The farm is safe" },
+    gate_open: { type: "Flag", desc: "�� Village gate is open" },
+    boss_dead: { type: "Flag", desc: "💀 The area boss is defeated" },
+    night_mode: { type: "Flag", desc: "🌙 It is currently night" },
+
+    // Special Quest Items
+    key_dragon_lair: { type: "Quest", desc: "🔥 Ancient obsidian key" },
+    emblem: { type: "Quest", desc: "🛡️ Royal Messenger Emblem" },
+    rat_tails: { type: "Quest", desc: "🐀 Gross, but Farmer needs proof" },
+    potion_healing: { type: "Potion", desc: "🧪 Restore health via herbs" },
+
+    // Add 20 more generic items for depth
+    ...Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [
+        `rare_artifact_${i + 1}`,
+        { type: "Rare", desc: `✨ Unique artifact #${i + 1}` },
+      ]),
+    ),
+    ...Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [
+        `resource_node_${i + 1}`,
+        { type: "Node", desc: `📍 Gathering node #${i + 1}` },
+      ]),
+    ),
+  };
 
   const VAR_NAMES = Object.keys(GAME_DB);
 
@@ -162,8 +257,8 @@
           // Dialogue: Speaker:
           [/^[a-zA-Z0-9_ ]+:/, "type.identifier"],
 
-          // Conditions
-          [/\(need\b/, "annotation.condition"],
+          // Conditions: Handle full block (need 5 $gold)
+          [/\(need\s+[^)]+\)/, "annotation.condition"],
 
           [/\/\/.*/, "comment"],
           [/\d+/, "number"],
@@ -205,22 +300,44 @@
             const item = GAME_DB[name];
             let kind = monaco.languages.CompletionItemKind.Variable;
             let icon = "💎"; // Default
+
             if (item.type === "Weapon") {
-              kind = monaco.languages.CompletionItemKind.Enum;
               icon = "⚔️";
-            }
-            if (item.type === "Stat") {
-              kind = monaco.languages.CompletionItemKind.Field;
+              kind = monaco.languages.CompletionItemKind.Enum;
+            } else if (item.type === "Stat") {
               icon = "📈";
-            }
-            if (item.type === "Currency") {
-              kind = monaco.languages.CompletionItemKind.Value;
+              kind = monaco.languages.CompletionItemKind.Field;
+            } else if (item.type === "Currency") {
               icon = "💰";
+              kind = monaco.languages.CompletionItemKind.Value;
+            } else if (item.type === "Quest") {
+              icon = "�";
+              kind = monaco.languages.CompletionItemKind.Struct;
+            } else if (item.type === "Potion") {
+              icon = "🧪";
+              kind = monaco.languages.CompletionItemKind.Color;
+            } else if (item.type === "Food") {
+              icon = "🍏";
+              kind = monaco.languages.CompletionItemKind.Module;
+            } else if (item.type === "Flag") {
+              icon = "�";
+              kind = monaco.languages.CompletionItemKind.TypeParameter;
+            } else if (item.type === "Spell") {
+              icon = "🪄";
+              kind = monaco.languages.CompletionItemKind.Function;
+            } else if (item.type === "Material") {
+              icon = "🏗️";
+              kind = monaco.languages.CompletionItemKind.Unit;
+            } else if (item.type === "Drop") {
+              icon = "🐺";
+              kind = monaco.languages.CompletionItemKind.Interface;
             }
-            if (item.type === "Key") {
-              kind = monaco.languages.CompletionItemKind.Property;
-              icon = "🔑";
-            }
+
+            // Override icon if description starts with an emoji
+            const emojiMatch = item.desc.match(
+              /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u,
+            );
+            if (emojiMatch) icon = emojiMatch[0];
 
             return {
               label: `${icon} $${name}`,
@@ -500,19 +617,19 @@
       },
 
       templates: {
-        basic: `# START\nStranger: Hello there, traveler.\n* Greetings -> GREET\n* Leave me alone -> RUDE\n\n# GREET\nStranger: Lovely weather today.\n-> END\n\n# RUDE\nStranger: Hmph. Suit yourself.\n-> END`,
+        tutorial: `# START\n// Lines starting with '#' are BLOCKS.\n// This block is named 'START'.\nGuide: Welcome to script writing!\nGuide: Use '*' for choices and '[]' for actions.\n* Tell me more -> EXPLAIN\n* I'm ready to write -> END\n\n# EXPLAIN\nGuide: You can check variables like gold or items.\nGuide: Example: (need 50 $gold)\n-> END`,
 
-        shop: `# START\nMerchant: Finest wares in the land!\n* Buy Iron Sword (50g) (need 50 gold) -> BUY_SWORD\n* Buy Potion (10g) (need 10 gold) -> BUY_POTION\n* Just looking -> LEAVE\n\n# BUY_SWORD\n[take 50 gold]\n[give sword_iron]\nMerchant: A sharp choice.\n-> END\n\n# BUY_POTION\n[take 10 gold]\n[give potion_healing]\nMerchant: Stay healthy!\n-> END\n\n# LEAVE\nMerchant: Come back with coin.\n-> END`,
+        shop: `# START\nMerchant: Finest wares in the land!\n* Buy Iron Sword (50g) (need 50 $gold) -> BUY_SWORD\n* Buy Potion (10g) (need 10 $gold) -> BUY_POTION\n* Just looking -> LEAVE\n\n# BUY_SWORD\n[take 50 $gold]\n[give $sword_iron]\nMerchant: A sharp choice. It will serve you well.\n-> END\n\n# BUY_POTION\n[take 10 $gold]\n[give $potion_healing]\nMerchant: Stay healthy out there!\n-> END\n\n# LEAVE\nMerchant: Come back when you have coin.\n-> END`,
 
-        simple_quest: `# START\n// Check State\n* (need 1 quest_rats_done) -> THANKS\n* (need 1 quest_rats_active) -> RETURN\n\n// Intro\nFarmer: Rats are eating my grain! Help?\n* I'll handle it -> ACCEPT\n* Not my problem -> END\n\n# ACCEPT\nFarmer: Thank you! Bring me 5 Rat Tails.\n[set quest_rats_active 1]\n-> END\n\n# RETURN\nFarmer: Are the rats gone?\n* Here (need 5 rat_tails) -> COMPLETE\n* Still working on it -> END\n\n# COMPLETE\nFarmer: You saved my harvest!\n[take 5 rat_tails]\n[set quest_rats_active 0]\n[set quest_rats_done 1]\n[give gold 50]\n-> END\n\n# THANKS\nFarmer: Crops are looking great.\n-> END`,
+        dragon_slayer: `# START\n// Check State\n* (need 1 $quest_dragon_dead) -> HERO\n* (need 1 $quest_dragon_active) -> RETURN\n\n// Intro\nKing: A Dragon plagues our lands!\n* I will slay it! -> ACCEPT\n* Sounds dangerous -> COWARD\n\n# ACCEPT\nKing: Take this key to the lair.\n[give $key_dragon_lair]\n[set $quest_dragon_active 1]\n-> END\n\n# COWARD\nKing: Then we are doomed.\n-> END\n\n# RETURN\n// Auto-complete if players has the head\n-> VICTORY (need 1 $dragon_head)\n\nKing: Have you slain the beast?\n-> END\n\n# VICTORY\n[take $dragon_head]\n[set $quest_dragon_active 0]\n[set $quest_dragon_dead 1]\n[give $gold 5000]\n[give $sword_excalibur]\nKing: You are the Savior of the Realm!\n-> END\n\n# HERO\nKing: All hail the Dragon Slayer!\n-> END`,
 
-        check: `# START\nNarrator: A heavy boulder blocks the path.\n* [STR] Push it (need 10 strength) -> PUSH\n* [INT] Use leverage (need 10 intelligence) -> LEVER\n* Give up -> END\n\n# PUSH\nNarrator: You heave with all your might... Success!\n-> END\n\n# LEVER\nNarrator: Physics wins again. The path is clear.\n-> END`,
+        riddle: `# START\nSphinx: I have a riddle for you.\nSphinx: What walks on 4 legs in the morning,\nSphinx: 2 at noon, and 3 in the evening?\n* A Human -> CORRECT\n* A Dog -> WRONG\n* A Spider -> WRONG\n\n# CORRECT\nSphinx: You are wise indeed.\n[give $intelligence 1]\n-> END\n\n# WRONG\nSphinx: Foolish mortal!\n[take $hp 10]\n-> END`,
 
-        reward: `# START\nNarrator: You find an ornate chest.\n* Open it (need 1 key_dungeon) -> OPEN\n* Smash it (need 15 strength) -> SMASH\n* Leave it -> END\n\n# OPEN\n[give gold 500]\n[give sword_steel]\nNarrator: You found gold and a Steel Sword!\n-> END\n\n# SMASH\n[give gold 200]\nNarrator: You got the gold, but damaged the item inside.\n-> END`,
+        door: `# START\nNarrator: A heavy iron door blocks the way.\n* [STR] Force it Open (need 15 $strength) -> OPEN_FORCE\n* [KEY] Use Dungeon Key (need 1 $key_dungeon) -> OPEN_KEY\n* Leave -> END\n\n# OPEN_FORCE\nNarrator: You strain your muscles... and the door gives way!\n-> END\n\n# OPEN_KEY\nNarrator: The key turns smoothly. Click.\n-> END`,
 
-        revive: `# START\nPriest: You look terrible, child.\n* Heal me (50g) (need 50 gold) -> HEAL\n* I'm fine -> END\n\n# HEAL\n[take 50 gold]\n[set hp 100]\nPriest: Light be with you.\n-> END`,
+        healer: `# START\nPriest: You look wounded, child.\n* Heal me (50g) (need 50 $gold) -> HEAL\n* I'm fine -> END\n\n# HEAL\n[take 50 $gold]\n[set $hp 100]\nPriest: Light be with you.\n-> END`,
 
-        quest: `# START\nGuard: Halt! Who goes there?\n* I am a Messenger -> MESSENGER\n* Just a traveler -> TRAVELER\n\n# MESSENGER\nGuard: Prove it.\n* Show Emblem (need 1 emblem) -> PASS\n* I lost it -> JAIL\n\n# PASS\nGuard: My apologies. Proceed.\n-> END\n\n# JAIL\nGuard: Likely story. Seize him!\n-> END\n\n# TRAVELER\nGuard: Move along then.\n-> END`,
+        auto_flow: `# START\nNPC: I need a Red Gem.\n// If player has it, jump immediately\n-> THANKS (need 1 $gem_red)\nNPC: Please find one for me.\n-> END\n\n# THANKS\n[take $gem_red]\n[give $gold 100]\nNPC: Oh! You already have it! Amazing!\n-> END`,
       } as Record<string, string>,
 
       loadTemplate(key: string) {

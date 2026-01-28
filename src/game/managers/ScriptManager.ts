@@ -13,9 +13,15 @@ export type ScriptLine =
   | { type: "say"; speaker: string; text: string }
   | {
       type: "choice";
-      options: { text: string; target: string; condition?: ScriptCondition }[];
+      options: {
+        text: string;
+        target: string;
+        condition?: ScriptCondition;
+        met?: boolean;
+        conditionText?: string;
+      }[];
     }
-  | { type: "goto"; target: string }
+  | { type: "goto"; target: string; condition?: ScriptCondition }
   | { type: "action"; command: string; args: string[] };
 
 export class ScriptManager {
@@ -76,27 +82,30 @@ export class ScriptManager {
         continue;
       }
 
-      // 2. Choice: * Text (need 5 x) -> TARGET
+      // 2. Choice: * Text (need 5 $x) -> TARGET
       if (rawLine.startsWith("*")) {
         if (!pendingChoice) pendingChoice = { options: [] };
 
-        // Parse: * Text [(need 5 gold)] -> TARGET
-        // Regex: * (Text) [(need 5 gold)] -> (TARGET)
+        // Parse: * Text [(need 5 $gold)] -> TARGET
         const parts = rawLine.substring(1).split("->");
         if (parts.length === 2) {
           let textPart = parts[0].trim();
           const target = parts[1].trim();
           let condition: ScriptCondition | undefined;
 
-          // Check for (need 5 gold)
+          // Check for (need N $VAR) - allow $ in var name
           const condMatch = textPart.match(
-            /\(need\s+(\d+)\s+([a-zA-Z0-9_]+)\)$/,
+            /\(need\s+(\d+)\s+([$a-zA-Z0-9_]+)\)$/,
           );
           if (condMatch) {
             // Found condition
+            let key = condMatch[2];
+            // Strip $ for internal logic
+            if (key.startsWith("$")) key = key.substring(1);
+
             condition = {
               val: parseInt(condMatch[1]),
-              key: condMatch[2],
+              key: key,
               op: ">=",
             };
             // Remove condition from text
@@ -114,21 +123,43 @@ export class ScriptManager {
         pendingChoice = null;
       }
 
-      // 3. Actions: [give sword], [set flag 1]
-      // Matches [cmd args...]
+      // 3. Actions: [give $sword], [set $flag 1]
       const actionMatch = rawLine.match(/^\[([a-zA-Z0-9_]+)(?:\s+(.+))?\]$/);
       if (actionMatch) {
         const command = actionMatch[1].toLowerCase(); // give, take, set
         const argsStr = actionMatch[2] || "";
         const args = argsStr.split(" ").filter((s) => s);
-        currentBlockLines.push({ type: "action", command, args });
+
+        // Clean args (remove $ from variables)
+        const cleanArgs = args.map((a) =>
+          a.startsWith("$") ? a.substring(1) : a,
+        );
+
+        currentBlockLines.push({ type: "action", command, args: cleanArgs });
         continue;
       }
 
-      // 4. Goto: -> TARGET
+      // 4. Goto: -> TARGET [(need 5 $var)]
       if (rawLine.startsWith("->")) {
-        const target = rawLine.substring(2).trim();
-        currentBlockLines.push({ type: "goto", target });
+        let textPart = rawLine.substring(2).trim();
+        let condition: ScriptCondition | undefined;
+
+        // Check for (need N $VAR)
+        const condMatch = textPart.match(
+          /\(need\s+(\d+)\s+([$a-zA-Z0-9_]+)\)$/,
+        );
+        if (condMatch) {
+          let key = condMatch[2];
+          if (key.startsWith("$")) key = key.substring(1);
+          condition = {
+            val: parseInt(condMatch[1]),
+            key: key,
+            op: ">=",
+          };
+          textPart = textPart.replace(condMatch[0], "").trim();
+        }
+
+        currentBlockLines.push({ type: "goto", target: textPart, condition });
         continue;
       }
 
@@ -183,6 +214,13 @@ export class ScriptManager {
 
     // Handle Goto
     if (line.type === "goto") {
+      // Check condition if exists
+      if (line.condition && !this.checkCondition(line.condition)) {
+        // Condition failed: Skip goto, proceed to next line
+        // This allows "fall-through" logic
+        return this.next();
+      }
+
       if (line.target === "END") {
         this._active = false;
         return null;
@@ -198,15 +236,27 @@ export class ScriptManager {
       return this.next();
     }
 
-    // Handle Choice (Filter by condition)
+    // Handle Choice (Annotate with met/conditionText)
     if (line.type === "choice") {
-      const validOptions = line.options.filter((opt) =>
-        this.checkCondition(opt.condition),
-      );
-      // If no valid options, what do we do? Skip? Stop?
-      // Ideally scripts shouldn't dead-end yourself.
-      // But for now, we return only valid ones.
-      return { ...line, options: validOptions };
+      const processedOptions = line.options.map((opt) => {
+        const isMet = opt.condition ? this.checkCondition(opt.condition) : true;
+        let condDesc = "";
+        if (opt.condition) {
+          const name = opt.condition.key;
+          const val = opt.condition.val;
+          // Simple heuristic: if it's 'gold' say gold, otherwise item name
+          condDesc = name === "gold" ? `${val} gold` : `${val} ${name}`;
+          // Clean up underscores
+          condDesc = condDesc.replace(/_/g, " ");
+        }
+
+        return {
+          ...opt,
+          met: isMet,
+          conditionText: condDesc,
+        };
+      });
+      return { ...line, options: processedOptions };
     }
 
     // Interpolate Text
