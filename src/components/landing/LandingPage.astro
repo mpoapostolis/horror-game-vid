@@ -10,26 +10,26 @@ import Footer from "../common/Footer.astro";
 >
   <!-- Surgical Grid Background -->
   <div
-    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-size-[40px_40px] opacity-20"
+    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-size-[40px_40px] opacity-50"
   >
   </div>
   <div
-    class="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_-30%,rgba(120,119,198,0.1),transparent)]"
+    class="absolute inset-0 bg-[radial-gradient(circle_800px_at_100%_0%,rgba(120,119,198,0.2),transparent)]"
   >
   </div>
 
   <!-- Ambient Glows -->
   <div
-    class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 blur-[120px] rounded-full animate-pulse-slow"
+    class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/25 blur-[120px] rounded-full animate-pulse-slow"
   >
   </div>
   <div
-    class="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/5 blur-[120px] rounded-full animate-pulse-slow delay-1000"
+    class="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/20 blur-[120px] rounded-full animate-pulse-slow delay-1000"
   >
   </div>
 
   <!-- Noise Overlay -->
-  <div class="absolute inset-0 opacity-[0.02] bg-[url('/assets/noise.png')]">
+  <div class="absolute inset-0 opacity-[0.02] bg-[url('/assets/noise-2.png')]">
   </div>
 </div>
 
@@ -41,43 +41,6 @@ import Footer from "../common/Footer.astro";
   <section
     class="relative min-h-screen flex flex-col justify-center items-center px-4 pt-20 overflow-hidden"
   >
-    <!-- Deep Space Gradient -->
-    <div
-      class="absolute inset-0 z-0 bg-gradient-to-b from-black via-[#050505] to-black"
-    >
-    </div>
-
-    <!-- Ambient Color Glows (Background Layer) -->
-    <div
-      class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 blur-[120px] rounded-full animate-pulse-slow pointer-events-none"
-    >
-    </div>
-    <div
-      class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-900/10 blur-[120px] rounded-full animate-pulse-slow delay-1000 pointer-events-none"
-    >
-    </div>
-    <div
-      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/5 blur-[100px] rounded-full pointer-events-none"
-    >
-    </div>
-
-    <!-- Grid Overlay (Foreground Layer for Visibility) -->
-    <div
-      class="absolute inset-0 z-0 bg-[url('/assets/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"
-      style="opacity: 0.5; mix-blend-mode: overlay;"
-    >
-    </div>
-
-    <!-- Orbital Ring (Decorative) -->
-    <div
-      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-white/5 rounded-full pointer-events-none opacity-20 animate-[spin_60s_linear_infinite]"
-    >
-    </div>
-    <div
-      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-white/5 rounded-full pointer-events-none opacity-10 animate-[spin_90s_linear_infinite_reverse]"
-    >
-    </div>
-
     <div
       class="relative z-10 flex flex-col items-center max-w-5xl mx-auto text-center w-full"
     >
@@ -93,6 +56,7 @@ import Footer from "../common/Footer.astro";
           class="absolute inset-0 text-emerald-500 opacity-100 animate-glitch-1 pointer-events-none mix-blend-screen"
           aria-hidden="true">VXLVERSE</span
         >
+
         <span
           class="absolute inset-0 text-purple-500 opacity-100 animate-glitch-2 pointer-events-none mix-blend-screen"
           aria-hidden="true">VXLVERSE</span
@@ -114,14 +78,14 @@ import Footer from "../common/Footer.astro";
         </p>
       </div>
 
-      <!-- CTA Buttons (Simple & Direct) -->
+      <!-- CTA Buttons (Sharp & Technical) -->
       <div
-        class="flex flex-col md:flex-row gap-5 w-full md:w-auto items-center justify-center animate-fade-in opacity-0"
+        class="flex flex-col md:flex-row gap-6 w-full md:w-auto items-center justify-center animate-fade-in opacity-0"
         style="animation-delay: 0.4s; animation-fill-mode: forwards;"
       >
         <a
           href="/editor"
-          class="group relative w-full md:w-auto px-10 py-5 bg-white text-black font-black uppercase tracking-widest text-xs rounded-full overflow-hidden hover:scale-105 transition-transform duration-200 shadow-[0_0_40px_rgba(255,255,255,0.4)]"
+          class="group relative w-full md:w-auto min-w-[220px] h-[60px] bg-white text-black font-black uppercase tracking-widest text-sm flex items-center justify-center hover:scale-105 transition-transform duration-200 clip-path-slant shadow-[5px_5px_0px_0px_rgba(255,255,255,0.2)]"
         >
           <span class="relative z-10">Start Creating</span>
           <div
@@ -132,7 +96,7 @@ import Footer from "../common/Footer.astro";
 
         <a
           href="/explore"
-          class="w-full md:w-auto px-10 py-5 border border-white/10 bg-white/5 backdrop-blur-md text-white font-bold uppercase tracking-widest text-xs rounded-full hover:bg-white/10 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2"
+          class="w-full md:w-auto min-w-[220px] h-[60px] border-2 border-white/20 bg-black text-white font-bold uppercase tracking-widest text-sm flex items-center justify-center hover:bg-white hover:text-black hover:border-white transition-all duration-200"
         >
           <span>Play Games</span>
         </a>
