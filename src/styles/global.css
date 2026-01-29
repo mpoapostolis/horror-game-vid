@@ -207,6 +207,18 @@ canvas {
   animation: slideUp 0.2s ease-out forwards;
 }
 
+@keyframes shine {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+.animate-shine {
+  animation: shine 8s linear infinite;
+}
+
 /* LiteGraph Overrides for Modern Look */
 .litemenu-mobile,
 .litemenu,
