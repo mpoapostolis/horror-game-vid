@@ -1,359 +1,591 @@
 ---
-
+import Header from "../common/Header.astro";
 ---
 
-<!-- Landing Page Overlay -->
-<section
-  id="landing-page"
-  class="fixed inset-0 z-50 overflow-y-auto bg-[#050505] text-white transition-opacity duration-1000 scrollbar-hide"
+<!-- Global Background -->
+<div
+  class="fixed inset-0 z-0 bg-[#020202] text-white overflow-hidden pointer-events-none"
 >
-  <!-- Background Effects -->
-  <div class="fixed inset-0 pointer-events-none z-0">
-    <div
-      class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,30,0.5)_0%,#000_100%)]"
-    >
-    </div>
-    <div
-      class="absolute top-0 left-0 w-full h-full bg-[url('/assets/noise.png')] opacity-[0.04] animate-pulse"
-    >
-    </div>
-    <div
-      class="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/90"
-    >
-    </div>
-  </div>
-
-  <!-- Navigation / Header -->
-  <nav
-    class="sticky top-0 z-20 w-full p-6 flex justify-between items-center mix-blend-difference backdrop-blur-sm border-b border-white/5"
-  >
-    <div class="text-sm font-bold tracking-[0.2em] uppercase text-gray-400">
-      VXL-GEN-3
-    </div>
-    <div class="flex gap-4">
-      <!-- Socials or minimal links could go here -->
-      <span class="text-xs text-gray-600 uppercase tracking-widest"
-        >v0.9.1 Beta</span
-      >
-    </div>
-  </nav>
-
-  <!-- Main Content Wrapper -->
+  <!-- Dynamic Grid Background -->
   <div
-    class="relative z-10 flex flex-col items-center w-full max-w-7xl mx-auto px-6"
+    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-size-[100px_100px] mask-[radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)]"
   >
-    <!-- HERO SECTION -->
-    <div
-      class="min-h-screen flex flex-col items-center justify-center text-center -mt-20"
-    >
-      <div class="space-y-6 relative">
-        <!-- Glitch Title Effect -->
-        <h1
-          class="relative text-8xl md:text-[10rem] font-black tracking-tighter leading-none select-none"
-        >
-          <span
-            class="absolute top-0 left-0 -ml-1 text-red-600 opacity-50 animate-glitch-1"
-            >VXL-BABY</span
-          >
-          <span
-            class="absolute top-0 left-0 ml-1 text-blue-600 opacity-50 animate-glitch-2"
-            >VXL-BABY</span
-          >
-          <span
-            class="relative z-10 bg-clip-text text-transparent bg-linear-to-b from-white to-gray-800"
-            >VXL-BABY</span
-          >
-        </h1>
-
-        <p
-          class="text-xl md:text-3xl text-gray-400 font-light tracking-[0.3em] uppercase opacity-0 animate-fade-in-up"
-        >
-          A Web-Based Horror Experiment
-        </p>
-      </div>
-
-      <!-- Action Area -->
-      <div
-        class="mt-20 flex flex-col items-center gap-6 opacity-0 animate-fade-in-up delay-300"
-      >
-        <a
-          href="/game"
-          class="group relative px-16 py-5 bg-transparent border border-white/20 hover:border-white/80 transition-all duration-300 overflow-hidden backdrop-blur-sm inline-block"
-        >
-          <div
-            class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"
-          >
-          </div>
-          <span
-            class="relative z-10 font-bold tracking-[0.3em] text-sm md:text-lg uppercase flex items-center justify-center gap-3"
-          >
-            Enter Experience
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-5 h-5 group-hover:translate-x-1 transition-transform"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"></path>
-            </svg>
-          </span>
-        </a>
-        <p
-          class="text-xs text-gray-600 uppercase tracking-widest max-w-md mx-auto"
-        >
-          Warning: This experience contains flashing lights and sudden loud
-          noises.
-        </p>
-      </div>
-
-      <!-- Chevron indicator -->
-      <div
-        class="absolute bottom-10 animate-bounce cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
-        id="scroll-indicator"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-          class="w-8 h-8 text-gray-500"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
-        </svg>
-      </div>
-    </div>
-
-    <!-- ABOUT / LORE SECTION -->
-    <div
-      class="py-32 w-full grid grid-cols-1 md:grid-cols-2 gap-20 items-center border-t border-white/5"
-    >
-      <div class="space-y-8">
-        <h2 class="text-5xl font-bold tracking-tight text-white mb-6">
-          <span class="text-amber-500">///</span> THE SIGNAL
-        </h2>
-        <p class="text-gray-400 text-lg leading-relaxed">
-          You are listening to the echoes of a forgotten frequency. What started
-          as a simple rendering engine has evolved into something... else. The
-          entities within this digital construct are not scripted. They are
-          learning.
-        </p>
-        <p class="text-gray-400 text-lg leading-relaxed">
-          Navigate the void. Build your world. But be warned:
-          <span class="text-white font-semibold"
-            >you are not the only admin here.</span
-          >
-        </p>
-      </div>
-      <div
-        class="relative h-[400px] w-full bg-[#0a0a0a] border border-white/10 rounded-sm overflow-hidden group"
-      >
-        <div
-          class="absolute inset-0 bg-linear-to-tr from-amber-900/20 to-transparent"
-        >
-        </div>
-        <!-- Abstract visual representation -->
-        <div class="absolute inset-0 flex items-center justify-center">
-          <div
-            class="w-32 h-32 border border-white/20 rotate-45 group-hover:rotate-90 transition-transform duration-[2s] ease-in-out"
-          >
-          </div>
-          <div
-            class="absolute w-28 h-28 border border-white/20 rotate-12 group-hover:-rotate-12 transition-transform duration-[3s] ease-in-out"
-          >
-          </div>
-        </div>
-        <div
-          class="absolute bottom-4 left-4 font-mono text-xs text-amber-500/50"
-        >
-          SYSTEM_ID: 884-X
-        </div>
-      </div>
-    </div>
-
-    <!-- FEATURES SECTION -->
-    <div class="py-32 w-full border-t border-white/5">
-      <h2
-        class="text-3xl font-light uppercase tracking-[0.2em] text-center mb-20 text-gray-500"
-      >
-        Core Systems
-      </h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Feature 1 -->
-        <div
-          class="p-8 border border-white/5 bg-white/2 hover:bg-white/5 transition-colors duration-300"
-        >
-          <div
-            class="w-12 h-12 bg-blue-500/10 mb-6 flex items-center justify-center border border-blue-500/20"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-6 h-6 text-blue-400"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M21 7.5l-9-5.25-9 5.25m18 0l-9 5.25-9-5.25M3 7.5v9l9 5.25m0-9v9"
-              ></path>
-            </svg>
-          </div>
-          <h3 class="text-xl font-bold text-white mb-3">Babylon.js Core</h3>
-          <p class="text-sm text-gray-400 leading-relaxed">
-            Powered by the advanced Babylon.js engine for high-fidelity 3D
-            rendering and real-time lighting calculations.
-          </p>
-        </div>
-
-        <!-- Feature 2 -->
-        <div
-          class="p-8 border border-white/5 bg-white/2 hover:bg-white/5 transition-colors duration-300"
-        >
-          <div
-            class="w-12 h-12 bg-amber-500/10 mb-6 flex items-center justify-center border border-amber-500/20"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-6 h-6 text-amber-400"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
-              ></path>
-            </svg>
-          </div>
-          <h3 class="text-xl font-bold text-white mb-3">Havok Physics</h3>
-          <p class="text-sm text-gray-400 leading-relaxed">
-            Integrated Havok physics engine delivering realistic collision
-            detection, gravity simulation, and rigid body dynamics.
-          </p>
-        </div>
-
-        <!-- Feature 3 -->
-        <div
-          class="p-8 border border-white/5 bg-white/2 hover:bg-white/5 transition-colors duration-300"
-        >
-          <div
-            class="w-12 h-12 bg-red-500/10 mb-6 flex items-center justify-center border border-red-500/20"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-6 h-6 text-red-400"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 5.472m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
-              ></path>
-            </svg>
-          </div>
-          <h3 class="text-xl font-bold text-white mb-3">Multiplayer Ready</h3>
-          <p class="text-sm text-gray-400 leading-relaxed">
-            Built for shared hallucinations. Real-time state synchronization
-            allows multiple agents to inhabit the same void.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- FOOTER -->
-    <footer class="w-full py-12 border-t border-white/5 text-center">
-      <p class="text-[10px] text-gray-600 tracking-widest uppercase">
-        &copy; 2026 StruggleCoder Ind. &bull; System Status: <span
-          class="text-emerald-500">ONLINE</span
-        >
-      </p>
-    </footer>
   </div>
-</section>
+
+  <!-- Ambient Glows -->
+  <div
+    class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 blur-[120px] rounded-full animate-pulse-slow"
+  >
+  </div>
+  <div
+    class="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/10 blur-[120px] rounded-full animate-pulse-slow delay-1000"
+  >
+  </div>
+
+  <!-- Noise Overlay -->
+  <div class="absolute inset-0 opacity-[0.03] bg-[url('/assets/noise.png')]">
+  </div>
+</div>
+
+<!-- Main Scroll Container -->
+<main
+  class="relative z-10 w-full h-screen overflow-y-auto overflow-x-hidden scroll-smooth perspective-container"
+>
+  <Header />
+
+  <!-- HERO SECTION -->
+  <section
+    class="min-h-screen flex flex-col justify-center items-center relative px-4 pt-20"
+  >
+    <div class="relative z-10 flex flex-col items-center max-w-5xl mx-auto">
+      <!-- Live Stats Ticker -->
+      <div
+        class="w-full flex justify-between items-center py-2 px-4 mb-12 border-y border-white/5 bg-black/50 backdrop-blur-md text-[10px] uppercase font-mono tracking-widest text-gray-500"
+      >
+        <span
+          >Players Online: <span class="text-emerald-500 animate-pulse"
+            >8,492</span
+          ></span
+        >
+        <span class="hidden md:inline"
+          >Worlds Created: <span class="text-white">124,093</span></span
+        >
+        <span>Server Load: <span class="text-purple-500">34%</span></span>
+      </div>
+
+      <!-- Main Title -->
+      <h1
+        class="text-6xl md:text-9xl font-black tracking-tighter leading-none text-center select-none relative z-10 mb-6 group"
+      >
+        <span
+          class="block text-white mix-blend-difference group-hover:scale-105 transition-transform duration-500"
+          >CREATE.</span
+        >
+        <span
+          class="block text-transparent bg-clip-text bg-linear-to-r from-purple-500 via-white to-cyan-500 animate-text-shimmer group-hover:scale-105 transition-transform duration-500 delay-75"
+          >PUBLISH.</span
+        >
+        <span
+          class="block text-white mix-blend-difference group-hover:scale-105 transition-transform duration-500 delay-150"
+          >PLAY.</span
+        >
+      </h1>
+
+      <!-- Subtitle -->
+      <p
+        class="text-lg md:text-xl text-gray-400 max-w-2xl text-center font-light leading-relaxed mb-12 backdrop-blur-sm bg-black/30 p-4 rounded-xl border border-white/5"
+      >
+        The only platform where you build immersive RPGs in the browser and
+        publish them instantly to the world.
+      </p>
+
+      <!-- Dual CTA -->
+      <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
+        <a
+          href="/editor"
+          class="group relative px-12 py-6 bg-white text-black font-black tracking-widest uppercase text-sm overflow-hidden text-center min-w-[200px]"
+        >
+          <span
+            class="relative z-10 group-hover:text-white transition-colors duration-300"
+            >Start Creating</span
+          >
+          <div
+            class="absolute inset-0 bg-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 ease-out"
+          >
+          </div>
+        </a>
+        <a
+          href="/explore"
+          class="group relative px-12 py-6 border border-white/20 text-white font-black tracking-widest uppercase text-sm overflow-hidden text-center min-w-[200px] hover:border-white transition-colors"
+        >
+          <span class="relative z-10">Explore Games</span>
+          <div
+            class="absolute inset-0 bg-white/5 transform scale-y-0 group-hover:scale-y-100 transition-transform origin-bottom duration-300 ease-out"
+          >
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPLORE / TRENDING GAMES (New Section) -->
+  <section
+    id="explore"
+    class="w-full px-4 md:px-12 py-24 bg-[#030303] border-t border-white/5 relative z-10"
+  >
+    <div class="max-w-7xl mx-auto">
+      <div class="flex justify-between items-end mb-12">
+        <div>
+          <h2
+            class="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white mb-2"
+          >
+            Trending Worlds
+          </h2>
+          <p class="text-gray-400 text-sm tracking-wide uppercase">
+            Top rated community creations this week
+          </p>
+        </div>
+        <a
+          href="/explore"
+          class="hidden md:block text-xs uppercase tracking-widest text-purple-400 hover:text-white transition-colors"
+          >View All -></a
+        >
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Game Card 1 -->
+        <div
+          class="group relative aspect-3/4 bg-[#0a0a0a] border border-white/5 hover:border-purple-500/50 transition-all duration-300 rounded-sm overflow-hidden cursor-pointer tilt-card"
+        >
+          <div
+            class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614726365723-49cfae92782f?q=80&w=800&auto=format&fit=crop')] bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-500 group-hover:scale-105"
+          >
+          </div>
+          <div
+            class="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent"
+          >
+          </div>
+          <div class="absolute bottom-0 left-0 p-6 w-full">
+            <div class="flex items-center gap-2 mb-2">
+              <span
+                class="px-2 py-0.5 bg-purple-500 text-[8px] font-bold text-black uppercase rounded-sm"
+                >RPG</span
+              >
+              <span class="text-[10px] text-gray-400 flex items-center gap-1"
+                ><div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> 1.2k playing</span
+              >
+            </div>
+            <h3
+              class="text-xl font-bold text-white leading-tight mb-1 group-hover:text-purple-400 transition-colors"
+            >
+              Neon Citadel
+            </h3>
+            <p class="text-xs text-gray-400 line-clamp-2">
+              Cyberpunk detective story with branching dialogue.
+            </p>
+          </div>
+        </div>
+
+        <!-- Game Card 2 -->
+        <div
+          class="group relative aspect-3/4 bg-[#0a0a0a] border border-white/5 hover:border-cyan-500/50 transition-all duration-300 rounded-sm overflow-hidden cursor-pointer tilt-card"
+        >
+          <div
+            class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop')] bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-500 group-hover:scale-105"
+          >
+          </div>
+          <div
+            class="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent"
+          >
+          </div>
+          <div class="absolute bottom-0 left-0 p-6 w-full">
+            <div class="flex items-center gap-2 mb-2">
+              <span
+                class="px-2 py-0.5 bg-cyan-500 text-[8px] font-bold text-black uppercase rounded-sm"
+                >Adventure</span
+              >
+              <span class="text-[10px] text-gray-400 flex items-center gap-1"
+                ><div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> 850 playing</span
+              >
+            </div>
+            <h3
+              class="text-xl font-bold text-white leading-tight mb-1 group-hover:text-cyan-400 transition-colors"
+            >
+              The Void Walker
+            </h3>
+            <p class="text-xs text-gray-400 line-clamp-2">
+              Puzzle platformer utilizing Havok physics.
+            </p>
+          </div>
+        </div>
+
+        <!-- Game Card 3 -->
+        <div
+          class="group relative aspect-3/4 bg-[#0a0a0a] border border-white/5 hover:border-emerald-500/50 transition-all duration-300 rounded-sm overflow-hidden cursor-pointer tilt-card"
+        >
+          <div
+            class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop')] bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-500 group-hover:scale-105"
+          >
+          </div>
+          <div
+            class="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent"
+          >
+          </div>
+          <div class="absolute bottom-0 left-0 p-6 w-full">
+            <div class="flex items-center gap-2 mb-2">
+              <span
+                class="px-2 py-0.5 bg-emerald-500 text-[8px] font-bold text-black uppercase rounded-sm"
+                >Survival</span
+              >
+              <span class="text-[10px] text-gray-400 flex items-center gap-1"
+                ><div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> 2.4k playing</span
+              >
+            </div>
+            <h3
+              class="text-xl font-bold text-white leading-tight mb-1 group-hover:text-emerald-400 transition-colors"
+            >
+              Forest of Echoes
+            </h3>
+            <p class="text-xs text-gray-400 line-clamp-2">
+              Multiplayer survival in a procedurally generated forest.
+            </p>
+          </div>
+        </div>
+
+        <!-- Game Card 4 (New) -->
+        <div
+          class="group relative aspect-3/4 bg-[#0a0a0a] border border-white/5 border-dashed flex flex-col items-center justify-center hover:bg-white/5 transition-colors cursor-pointer"
+        >
+          <div
+            class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-6 h-6 text-white"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 4.5v15m7.5-7.5h-15"></path>
+            </svg>
+          </div>
+          <span class="text-sm font-bold uppercase tracking-widest text-white"
+            >Publish Yours</span
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES BENTO GRID -->
+  <section
+    id="features"
+    class="min-h-screen w-full px-4 md:px-12 py-24 bg-[#050505] relative z-10"
+  >
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-20 border-l-2 border-purple-500 pl-6">
+        <h2
+          class="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white mb-4"
+        >
+          Core Systems
+        </h2>
+        <p class="text-gray-400 max-w-lg text-sm tracking-wide uppercase">
+          Advanced tooling for the modern storyteller.
+        </p>
+      </div>
+
+      <div
+        class="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-4 h-auto md:h-[800px]"
+      >
+        <!-- Large Card: Visual Scripting -->
+        <div
+          class="group md:col-span-2 md:row-span-2 relative p-8 md:p-12 border border-white/5 bg-white/2 hover:bg-white/4 transition-colors rounded-xl overflow-hidden flex flex-col justify-end tilt-card"
+        >
+          <div
+            class="absolute inset-0 bg-linear-to-t from-black/80 to-transparent z-10"
+          >
+          </div>
+
+          <!-- Abstract UI Mockup Background -->
+          <div
+            class="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700"
+          >
+            <div
+              class="absolute top-10 right-10 w-[400px] h-[300px] border border-white/10 rounded bg-[#111] -rotate-5 transform group-hover:rotate-0 transition-transform duration-700 ease-out"
+            >
+            </div>
+            <div
+              class="absolute top-20 right-20 w-[400px] h-[300px] border border-purple-500/20 rounded bg-[#151515] -rotate-2 transform group-hover:rotate-0 transition-transform duration-500 ease-out"
+            >
+            </div>
+          </div>
+
+          <div class="relative z-20 max-w-xl">
+            <div
+              class="w-12 h-12 mb-6 rounded-full border border-purple-500/30 flex items-center justify-center bg-purple-500/10"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5 text-purple-400"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25"
+                ></path>
+              </svg>
+            </div>
+            <h3 class="text-3xl md:text-5xl font-bold text-white mb-4">
+              VXLScript Pro
+            </h3>
+            <p class="text-gray-400 text-lg leading-relaxed">
+              Proprietary node-based visual logic. Create complex branching
+              narratives, inventory systems, and quest logic without writing a
+              single line of code.
+            </p>
+          </div>
+        </div>
+
+        <!-- Small Card: Havok -->
+        <div
+          class="group relative p-8 border border-white/5 bg-white/2 hover:bg-white/4 transition-colors rounded-xl overflow-hidden flex flex-col justify-between tilt-card"
+        >
+          <div
+            class="absolute top-0 right-0 p-32 bg-cyan-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-cyan-500/20 transition-colors"
+          >
+          </div>
+          <div
+            class="w-10 h-10 mb-4 rounded border border-cyan-500/30 flex items-center justify-center bg-cyan-500/10"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5 text-cyan-400"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m21 7.5-9-5.25-9 5.25m18 0-9 5.25-9-5.25m9-5.25v9l-9 5.25m9-5.25 9 5.25m-9-5.25v9"
+              ></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-2xl font-bold text-white mb-2">Havok Physics</h3>
+            <p class="text-xs text-gray-500 uppercase tracking-wider">
+              Real-time simulation
+            </p>
+          </div>
+        </div>
+
+        <!-- Small Card: World Building -->
+        <div
+          class="group relative p-8 border border-white/5 bg-white/2 hover:bg-white/4 transition-colors rounded-xl overflow-hidden flex flex-col justify-between tilt-card"
+        >
+          <div
+            class="absolute bottom-0 left-0 p-32 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-emerald-500/20 transition-colors"
+          >
+          </div>
+          <div
+            class="w-10 h-10 mb-4 rounded border border-emerald-500/30 flex items-center justify-center bg-emerald-500/10"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5 text-emerald-400"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z"
+              ></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-2xl font-bold text-white mb-2">World Builder</h3>
+            <p class="text-xs text-gray-500 uppercase tracking-wider">
+              Drag & drop architecture
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOWCASE / FOOTER -->
+  <section class="py-32 px-4 border-t border-white/5 bg-[#080808]">
+    <div class="max-w-4xl mx-auto text-center">
+      <h2
+        class="text-5xl md:text-8xl font-black text-[#111] uppercase tracking-tighter mb-8"
+      >
+        Create Forever
+      </h2>
+      <p class="text-gray-500 mb-12 max-w-md mx-auto">
+        Join the new era of browser-based story creation. Detailed worlds, rich
+        narratives, zero barriers.
+      </p>
+
+      <div class="flex flex-col items-center gap-8">
+        <a
+          href="/editor"
+          class="inline-block px-12 py-5 bg-white text-black font-bold tracking-widest uppercase text-sm hover:scale-105 transition-transform duration-200"
+          >Enter The Engine</a
+        >
+
+        <div
+          class="flex gap-8 text-[10px] uppercase tracking-widest text-gray-600 mt-12"
+        >
+          <span class="hover:text-white cursor-pointer transition-colors"
+            >Twitter</span
+          >
+          <span class="hover:text-white cursor-pointer transition-colors"
+            >Discord</span
+          >
+          <span class="hover:text-white cursor-pointer transition-colors"
+            >Github</span
+          >
+        </div>
+
+        <p class="text-[10px] text-gray-800 uppercase tracking-widest mt-12">
+          &copy; 2026 StruggleCoder Ind.
+        </p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script lang="ts">
+  // Mouse Spotlight Effect
+  const featuresSection = document.getElementById("features");
+  if (featuresSection) {
+    featuresSection.addEventListener("mousemove", (e) => {
+      const { left, top } = featuresSection.getBoundingClientRect();
+      const x = e.clientX - left;
+      const y = e.clientY - top;
+      featuresSection.style.setProperty("--mouse-x", `${x}px`);
+      featuresSection.style.setProperty("--mouse-y", `${y}px`);
+    });
+  }
+
+  // 3D Tilt Effect on Cards
+  const cards = document.querySelectorAll(".tilt-card");
+  cards.forEach((card) => {
+    card.addEventListener("mousemove", (e) => {
+      // @ts-ignore
+      const rect = card.getBoundingClientRect();
+      const x = (e as MouseEvent).clientX - rect.left;
+      const y = (e as MouseEvent).clientY - rect.top;
+
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      const rotateX = ((y - centerY) / centerY) * -5; // Max 5deg rotation
+      const rotateY = ((x - centerX) / centerX) * 5;
+
+      // @ts-ignore
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+    });
+
+    card.addEventListener("mouseleave", () => {
+      // @ts-ignore
+      card.style.transform =
+        "perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)";
+    });
+  });
+</script>
 
 <style>
-  /* Scrollbar Hide */
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  /* Base & Utility */
+  .perspective-container {
+    perspective: 1000px;
   }
 
-  /* Custom Animations */
-  @keyframes glitched {
-    0% {
-      transform: translate(0);
-    }
-    20% {
-      transform: translate(-2px, 2px);
-    }
-    40% {
-      transform: translate(-2px, -2px);
-    }
-    60% {
-      transform: translate(2px, 2px);
-    }
-    80% {
-      transform: translate(2px, -2px);
-    }
+  /* Spotlight Gradient */
+  #features {
+    --mouse-x: 50%;
+    --mouse-y: 50%;
+  }
+
+  #features::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      800px circle at var(--mouse-x) var(--mouse-y),
+      rgba(255, 255, 255, 0.06),
+      transparent 40%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .tilt-card {
+    transition: transform 0.1s ease-out;
+    will-change: transform;
+  }
+
+  /* Animations */
+  @keyframes slowPulse {
+    0%,
     100% {
-      transform: translate(0);
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.1);
     }
   }
-
-  .animate-glitch-1 {
-    animation: glitched 3s infinite linear alternate-reverse;
-  }
-  .animate-glitch-2 {
-    animation: glitched 2.5s infinite linear alternate-reverse;
+  .animate-pulse-slow {
+    animation: slowPulse 8s infinite ease-in-out;
   }
 
-  @keyframes fadeInUp {
+  @keyframes slideUp {
+    from {
+      transform: translateY(100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .animate-slide-up {
+    animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(20px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
     }
   }
-
-  .animate-fade-in-up {
-    animation: fadeInUp 0.8s ease-out forwards;
+  .animate-fade-in {
+    opacity: 0;
+    animation: fadeIn 1s ease-out forwards;
   }
 
+  @keyframes textShimmer {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+  .animate-text-shimmer {
+    background-size: 200% auto;
+    animation: textShimmer 3s linear infinite;
+  }
+
+  .delay-75 {
+    animation-delay: 75ms;
+  }
+  .delay-150 {
+    animation-delay: 150ms;
+  }
+  .delay-200 {
+    animation-delay: 200ms;
+  }
   .delay-300 {
     animation-delay: 300ms;
   }
-</style>
-
-<script>
-  const landingPage = document.getElementById("landing-page");
-  const scrollIndicator = document.getElementById("scroll-indicator");
-
-  if (scrollIndicator) {
-    scrollIndicator.addEventListener("click", () => {
-      landingPage?.scrollTo({ top: window.innerHeight, behavior: "smooth" });
-    });
+  .delay-1000 {
+    animation-delay: 1000ms;
   }
-</script>
+</style>
