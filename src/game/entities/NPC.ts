@@ -47,6 +47,8 @@ export class NPC {
     }
 
     // Apply transform
+    // Clear rotationQuaternion so Euler rotation works with gizmos (GLB uses quaternions by default)
+    this.mesh.rotationQuaternion = null;
     this.mesh.position = position;
     this.mesh.scaling.setAll(options.scale ?? 1);
 

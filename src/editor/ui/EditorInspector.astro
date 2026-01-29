@@ -300,6 +300,7 @@
                 >Location</label
               >
               <div class="grid grid-cols-3 gap-1 w-full">
+                <!-- X -->
                 <div class="relative group">
                   <div
                     class="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-bold text-red-500 pointer-events-none select-none"
@@ -309,11 +310,12 @@
                   <input
                     type="number"
                     step="0.1"
-                    x-model.number="config.entities[selectedEntityIdx].position[0]"
-                    @input="updateTransformFromUI"
+                    :value="config.entities[selectedEntityIdx].position[0]"
+                    @input="config.entities[selectedEntityIdx].position[0] = parseFloat($event.target.value); updateTransformFromUI()"
                     class="blender-input w-full pl-3 text-center"
                   />
                 </div>
+                <!-- Y -->
                 <div class="relative group">
                   <div
                     class="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-bold text-green-500 pointer-events-none select-none"
@@ -323,11 +325,12 @@
                   <input
                     type="number"
                     step="0.1"
-                    x-model.number="config.entities[selectedEntityIdx].position[1]"
-                    @input="updateTransformFromUI"
+                    :value="config.entities[selectedEntityIdx].position[1]"
+                    @input="config.entities[selectedEntityIdx].position[1] = parseFloat($event.target.value); updateTransformFromUI()"
                     class="blender-input w-full pl-3 text-center"
                   />
                 </div>
+                <!-- Z -->
                 <div class="relative group">
                   <div
                     class="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-bold text-blue-500 pointer-events-none select-none"
@@ -337,8 +340,8 @@
                   <input
                     type="number"
                     step="0.1"
-                    x-model.number="config.entities[selectedEntityIdx].position[2]"
-                    @input="updateTransformFromUI"
+                    :value="config.entities[selectedEntityIdx].position[2]"
+                    @input="config.entities[selectedEntityIdx].position[2] = parseFloat($event.target.value); updateTransformFromUI()"
                     class="blender-input w-full pl-3 text-center"
                   />
                 </div>

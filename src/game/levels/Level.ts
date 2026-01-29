@@ -244,6 +244,11 @@ export class Level extends BaseLevel {
       animations: spawn.animations,
     });
 
+    // Apply rotation if specified
+    if (spawn.rotation) {
+      npc.mesh.rotation.set(...spawn.rotation);
+    }
+
     const name = spawn.name || spawn.entity || spawn.asset || `npc_${index}`;
     this.npcs.set(index, npc);
     this.npcNameIndex.set(name, npc);
@@ -278,6 +283,9 @@ export class Level extends BaseLevel {
     const data = await this.assetManager.loadMesh(spawn.asset, this.scene);
     const root = data.meshes[0];
     if (!root) return;
+
+    // Clear rotationQuaternion so Euler rotation works (GLB models use quaternions by default)
+    root.rotationQuaternion = null;
 
     root.position.copyFrom(position);
     if (spawn.rotation) root.rotation.set(...spawn.rotation);
@@ -585,13 +593,15 @@ export class Level extends BaseLevel {
   private setupGizmoManager(): void {
     console.log("[Level] Setting up GizmoManager...");
     this.gizmoManager = new GizmoManager(this.scene);
-    this.gizmoManager.positionGizmoEnabled = true;
-    this.gizmoManager.rotationGizmoEnabled = false;
-    this.gizmoManager.scaleGizmoEnabled = false;
     this.gizmoManager.usePointerToAttachGizmos = false;
     this.gizmoManager.clearGizmoOnEmptyPointerEvent = false;
 
-    this.setupGizmoObservers();
+    // Start with position gizmo and set up its observers
+    this.gizmoManager.positionGizmoEnabled = true;
+    this.gizmoManager.rotationGizmoEnabled = false;
+    this.gizmoManager.scaleGizmoEnabled = false;
+    this.setupCurrentGizmoObservers();
+
     console.log("[Level] GizmoManager setup complete.");
   }
 
@@ -669,7 +679,7 @@ export class Level extends BaseLevel {
     return null;
   }
 
-  private setupGizmoObservers(): void {
+  private setupCurrentGizmoObservers(): void {
     const gm = this.gizmoManager;
     if (!gm) return;
 
@@ -677,33 +687,50 @@ export class Level extends BaseLevel {
       const mesh = gm.attachedMesh;
       if (!mesh || !isEntityMetadata(mesh.metadata)) return;
 
+      // Handle rotation - if rotationQuaternion is set, convert to Euler
+      let rotation = mesh.rotation.clone();
+      if (mesh.rotationQuaternion) {
+        rotation = mesh.rotationQuaternion.toEulerAngles();
+      }
+
       this.onTransformChanged?.(
         mesh.metadata.index,
         mesh.position.clone(),
-        mesh.rotation.clone(),
+        rotation,
         mesh.scaling.clone(),
       );
     };
 
-    const gizmos = [
-      gm.gizmos.positionGizmo,
-      gm.gizmos.rotationGizmo,
-      gm.gizmos.scaleGizmo,
-    ];
+    // Set up observers for each enabled gizmo type explicitly
+    const gizmos = gm.gizmos;
 
-    for (const gizmo of gizmos) {
-      if (!gizmo) continue;
+    if (gizmos.positionGizmo) {
+      this.attachGizmoObservers(gizmos.positionGizmo, handleTransformChange);
+    }
+    if (gizmos.rotationGizmo) {
+      this.attachGizmoObservers(gizmos.rotationGizmo, handleTransformChange);
+    }
+    if (gizmos.scaleGizmo) {
+      this.attachGizmoObservers(gizmos.scaleGizmo, handleTransformChange);
+    }
+  }
 
-      const endObs = gizmo.onDragEndObservable.add(handleTransformChange);
-      if (endObs) this.gizmoObservers.push(endObs);
+  private attachGizmoObservers(
+    gizmo: {
+      onDragEndObservable: { add: (fn: () => void) => unknown };
+      xGizmo?: { dragBehavior: { onDragObservable: { add: (fn: () => void) => unknown } } };
+      yGizmo?: { dragBehavior: { onDragObservable: { add: (fn: () => void) => unknown } } };
+      zGizmo?: { dragBehavior: { onDragObservable: { add: (fn: () => void) => unknown } } };
+    },
+    callback: () => void,
+  ): void {
+    const endObs = gizmo.onDragEndObservable.add(callback);
+    if (endObs) this.gizmoObservers.push(endObs as never);
 
-      for (const axis of [gizmo.xGizmo, gizmo.yGizmo, gizmo.zGizmo]) {
-        if (!axis) continue;
-        const dragObs = axis.dragBehavior.onDragObservable.add(
-          handleTransformChange,
-        );
-        if (dragObs) this.gizmoObservers.push(dragObs);
-      }
+    for (const axis of [gizmo.xGizmo, gizmo.yGizmo, gizmo.zGizmo]) {
+      if (!axis?.dragBehavior) continue;
+      const dragObs = axis.dragBehavior.onDragObservable.add(callback);
+      if (dragObs) this.gizmoObservers.push(dragObs as never);
     }
   }
 
@@ -742,9 +769,37 @@ export class Level extends BaseLevel {
 
   public setGizmoMode(mode: "position" | "rotation" | "scale"): void {
     if (!this.gizmoManager) return;
+
+    // Remember the currently attached mesh
+    const attachedMesh = this.gizmoManager.attachedMesh;
+
+    // Clear old observers before changing gizmo mode
+    this.clearGizmoObservers();
+
+    // Enable only the requested gizmo (this creates a new gizmo instance)
     this.gizmoManager.positionGizmoEnabled = mode === "position";
     this.gizmoManager.rotationGizmoEnabled = mode === "rotation";
     this.gizmoManager.scaleGizmoEnabled = mode === "scale";
+
+    // Fix rotation gizmo for non-uniform scaling
+    if (mode === "rotation" && this.gizmoManager.gizmos.rotationGizmo) {
+      this.gizmoManager.gizmos.rotationGizmo.updateGizmoRotationToMatchAttachedMesh = false;
+    }
+
+    // Set up observers for the newly created gizmo
+    this.setupCurrentGizmoObservers();
+
+    // Re-attach to the mesh (gizmo change might have reset this)
+    if (attachedMesh) {
+      this.gizmoManager.attachToMesh(attachedMesh);
+    }
+  }
+
+  private clearGizmoObservers(): void {
+    for (const obs of this.gizmoObservers) {
+      obs.remove();
+    }
+    this.gizmoObservers.length = 0;
   }
 
   public updateEntityTransform(
@@ -799,6 +854,12 @@ export class Level extends BaseLevel {
       scale,
       animations,
     });
+
+    // Apply rotation if specified
+    if (spawn?.type === "npc" && spawn.rotation) {
+      newNpc.mesh.rotation.set(...spawn.rotation);
+    }
+
     const name = spawn?.name || `npc_${index}`;
 
     this.npcs.set(index, newNpc);
@@ -825,6 +886,9 @@ export class Level extends BaseLevel {
     const root = data.meshes[0];
     if (!root) return;
 
+    // Clear rotationQuaternion so Euler rotation works
+    root.rotationQuaternion = null;
+
     if (oldPosition) root.position.copyFrom(oldPosition);
     if (oldRotation) root.rotation.copyFrom(oldRotation);
     if (oldScaling) root.scaling.copyFrom(oldScaling);
@@ -847,6 +911,12 @@ export class Level extends BaseLevel {
   }
 
   public removeEntityLive(index: number): void {
+    // Detach gizmo first if attached to this entity
+    const meshToRemove = this.entityMeshIndex.get(index);
+    if (meshToRemove && this.gizmoManager?.attachedMesh === meshToRemove) {
+      this.gizmoManager.attachToMesh(null);
+    }
+
     // Dispose entity
     const npc = this.npcs.get(index);
     if (npc) {
@@ -886,24 +956,27 @@ export class Level extends BaseLevel {
       return newMap;
     };
 
+    // Reindex BEFORE clearing - fix: maps were being cleared first
+    const newNpcs = reindex(this.npcs, (npc, newIdx) => {
+      if (isEntityMetadata(npc.mesh.metadata)) npc.mesh.metadata.index = newIdx;
+    });
+    const newPortals = reindex(this.portals, (portal, newIdx) => {
+      if (portal.mesh && isEntityMetadata(portal.mesh.metadata))
+        portal.mesh.metadata.index = newIdx;
+    });
+    const newProps = reindex(this.props, (prop, newIdx) => {
+      if (isEntityMetadata(prop.metadata)) prop.metadata.index = newIdx;
+    });
+
+    // Now clear and repopulate with reindexed data
     this.npcs.clear();
-    for (const [idx, npc] of reindex(this.npcs)) {
-      this.npcs.set(idx, npc);
-      if (isEntityMetadata(npc.mesh.metadata)) npc.mesh.metadata.index = idx;
-    }
+    newNpcs.forEach((npc, idx) => this.npcs.set(idx, npc));
 
     this.portals.clear();
-    for (const [idx, portal] of reindex(this.portals)) {
-      this.portals.set(idx, portal);
-      if (portal.mesh && isEntityMetadata(portal.mesh.metadata))
-        portal.mesh.metadata.index = idx;
-    }
+    newPortals.forEach((portal, idx) => this.portals.set(idx, portal));
 
     this.props.clear();
-    for (const [idx, prop] of reindex(this.props)) {
-      this.props.set(idx, prop);
-      if (isEntityMetadata(prop.metadata)) prop.metadata.index = idx;
-    }
+    newProps.forEach((prop, idx) => this.props.set(idx, prop));
 
     // Rebuild mesh index
     this.entityMeshIndex.clear();

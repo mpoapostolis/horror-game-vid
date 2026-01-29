@@ -11,6 +11,7 @@ import {
   type PortalSpawn,
 } from "../../game/config/levels";
 import { ENTITIES } from "../../game/config/entities";
+import { aval_assets } from "./aval_assets";
 import type { Vector3 } from "@babylonjs/core";
 
 // Global Window Extensions for Editor Integration
@@ -56,6 +57,9 @@ interface EditorState {
   showNewLevelModal: boolean;
   newLevelName: string;
   searchQuery: string;
+  selectedCategory: string;
+  currentPage: number;
+  itemsPerPage: number;
   outlinerSearch: string;
   selectingAssetFor: AssetSelection | null;
   engine: Engine | null;
@@ -66,13 +70,7 @@ interface EditorState {
 
 // ==================== CONSTANTS ====================
 
-const AVAILABLE_ASSETS = [
-  "/assets/Demon.glb",
-  "/assets/home.glb",
-  "/assets/man.glb",
-  "/assets/room-large.glb",
-  "/assets/wife.glb",
-] as const;
+const AVAILABLE_ASSETS = aval_assets;
 
 const AVAILABLE_MUSIC = [
   "level_1",
@@ -108,9 +106,16 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function extractAssetName(path: string): string {
-  if (!path || typeof path !== "string") return "Unknown";
-  return path.replace("/assets/", "").replace(".glb", "").replace(".mp3", "");
+function extractAssetName(asset: string | { name: string }): string {
+  if (!asset) return "Unknown";
+  if (typeof asset === "object" && "name" in asset) return asset.name;
+  if (typeof asset === "string") {
+    return asset
+      .replace("/assets/", "")
+      .replace(".glb", "")
+      .replace(".mp3", "");
+  }
+  return "Unknown";
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -168,6 +173,9 @@ export function editorLogic() {
     showNewLevelModal: false,
     newLevelName: "",
     searchQuery: "",
+    selectedCategory: "All",
+    currentPage: 1,
+    itemsPerPage: 18,
     outlinerSearch: "",
     selectingAssetFor: null,
     engine: null,
@@ -199,15 +207,68 @@ export function editorLogic() {
 
     // ==================== COMPUTED ====================
 
-    get filteredAssets(): readonly string[] {
+    get filteredAssets(): readonly (string | (typeof aval_assets)[number])[] {
       const source =
         this.selectingAssetFor?.field === "music" ||
         this.selectingAssetFor?.field === "sound"
           ? this.availableMusic
           : this.availableAssets;
-      if (!this.searchQuery) return source;
-      const query = this.searchQuery.toLowerCase();
-      return source.filter((a: string) => a.toLowerCase().includes(query));
+
+      let result = source;
+
+      // 1. Filter by Category (only for assets)
+      if (this.selectedCategory !== "All" && source === this.availableAssets) {
+        // @ts-ignore
+        result = result.filter(
+          (a) => typeof a !== "string" && a.category === this.selectedCategory,
+        );
+      }
+
+      // 2. Filter by Search
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        // @ts-ignore
+        result = result.filter((a) => {
+          if (typeof a === "string") return a.toLowerCase().includes(query);
+          return a.name.toLowerCase().includes(query);
+        });
+      }
+
+      return result;
+    },
+
+    get paginatedAssets(): readonly (string | (typeof aval_assets)[number])[] {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      return this.filteredAssets.slice(start, start + this.itemsPerPage);
+    },
+
+    get totalPages(): number {
+      return Math.ceil(this.filteredAssets.length / this.itemsPerPage);
+    },
+
+    get categories() {
+      const updates = new Set<string>();
+      // @ts-ignore
+      this.availableAssets.forEach((a) => {
+        if (typeof a !== "string" && a.category) {
+          updates.add(a.category);
+        }
+      });
+      return ["All", ...Array.from(updates).sort()];
+    },
+
+    get assetCounts() {
+      const counts: Record<string, number> = { All: 0 };
+      // @ts-ignore
+      this.availableAssets.forEach((a) => {
+        // @ts-ignore
+        if (typeof a !== "string" && a.category) {
+          // @ts-ignore
+          counts[a.category] = (counts[a.category] || 0) + 1;
+        }
+        counts.All++;
+      });
+      return counts;
     },
 
     // ==================== LIFECYCLE ====================
@@ -547,7 +608,9 @@ export function editorLogic() {
       this.showAssetModal = true;
     },
 
-    async onAssetSelected(assetPath: string) {
+    async onAssetSelected(asset: string | (typeof aval_assets)[number]) {
+      const assetPath = typeof asset === "string" ? asset : asset.glb;
+
       if (!this.selectingAssetFor) {
         this.addProp(assetPath);
         return;
@@ -668,12 +731,14 @@ export function editorLogic() {
       const entity = this.config.entities[id];
       if (!entity || this.selectedEntityIdx !== id) return;
 
+      // Update position
       entity.position = [
         parseFloat(pos.x.toFixed(2)),
         parseFloat(pos.y.toFixed(2)),
         parseFloat(pos.z.toFixed(2)),
       ];
 
+      // Update rotation
       if (rot && (isNPCSpawn(entity) || isPropSpawn(entity))) {
         entity.rotation = [
           parseFloat(rot.x.toFixed(2)),
@@ -682,6 +747,7 @@ export function editorLogic() {
         ];
       }
 
+      // Update scale
       if (scale) {
         if (isPropSpawn(entity)) {
           entity.scaling = [
@@ -694,6 +760,8 @@ export function editorLogic() {
         }
       }
 
+      // Force Alpine reactivity by creating new entity reference
+      this.config.entities[id] = { ...entity };
       this.markDirty();
     },
 
@@ -822,6 +890,31 @@ export function editorLogic() {
       }
     },
 
+    // ==================== PAGINATION & CATEGORIES ====================
+
+    setCategory(cat: string) {
+      this.selectedCategory = cat;
+      this.currentPage = 1;
+    },
+
+    setPage(page: number) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
+    },
+
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+
     // ==================== UI HELPERS ====================
 
     getIcon(type: string): string {
@@ -829,6 +922,15 @@ export function editorLogic() {
     },
 
     getAssetName: extractAssetName,
+
+    getAssetThumbnail(
+      asset: string | (typeof aval_assets)[number],
+    ): string | null {
+      if (typeof asset === "object" && "thumbnail" in asset) {
+        return asset.thumbnail;
+      }
+      return null;
+    },
 
     getEntityName(entity: EntitySpawn | null): string {
       if (!entity) return "Unknown";
