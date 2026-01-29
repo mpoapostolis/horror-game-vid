@@ -1,69 +1,70 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/common/Header.astro";
+import Card from "../components/common/Card.astro";
 import "../styles/global.css";
 
 const featuredGames = [
   {
     title: "Neon Citadel",
-    genre: "RPG",
-    author: "CyberK",
-    players: "1.2k",
+    subtitle: "Cyberpunk • Detective",
+    badge: "RPG",
+    badgeColor: "purple",
+    id: "8821",
     image:
       "https://images.unsplash.com/photo-1614726365723-49cfae92782f?q=80&w=800&auto=format&fit=crop",
-    desc: "A sprawling cyberpunk detective saga.",
   },
   {
     title: "The Void Walker",
-    genre: "Adventure",
-    author: "NullPt",
-    players: "850",
+    subtitle: "Puzzle • Gravity",
+    badge: "Physics",
+    badgeColor: "cyan",
+    id: "4102",
     image:
       "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop",
-    desc: "Gravity-defying visual masterpieces.",
   },
   {
     title: "Forest of Echoes",
-    genre: "Survival",
-    author: "GreenThumb",
-    players: "2.4k",
+    subtitle: "Horror • Procedural",
+    badge: "Survival",
+    badgeColor: "emerald",
+    id: "9931",
     image:
       "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop",
-    desc: "Procedural horror in an infinite wood.",
   },
   {
     title: "Steel Horizon",
-    genre: "RTS",
-    author: "MechMind",
-    players: "5.1k",
+    subtitle: "Real-Time • Strategy",
+    badge: "RTS",
+    badgeColor: "zinc",
+    id: "2201",
     image:
       "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop",
-    desc: "Command legions in a rusted world.",
   },
   {
     title: "Dream Scape",
-    genre: "Social",
-    author: "Lucid",
-    players: "12k",
+    subtitle: "Vaporwave • Social",
+    badge: "Social",
+    badgeColor: "purple",
+    id: "7742",
     image:
       "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?q=80&w=800&auto=format&fit=crop",
-    desc: "Hang out in a vaporwave paradise.",
   },
   {
     title: "Grim Vault",
-    genre: "Dungeon Crawler",
-    author: "D20",
-    players: "900",
+    subtitle: "Hardcore • Dungeon",
+    badge: "Crawler",
+    badgeColor: "emerald",
+    id: "1923",
     image:
       "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=800&auto=format&fit=crop",
-    desc: "Old school hardcore dungeoneering.",
   },
 ];
 
 const categories = [
-  "All",
+  "All Systems",
   "RPG",
-  "FPS",
+  "Physics",
   "Survival",
   "Strategy",
   "Social",
@@ -75,20 +76,20 @@ const categories = [
   <Header />
 
   <div
-    class="min-h-screen bg-[#020202] text-white pt-32 px-4 md:px-12 pb-20 relative overflow-hidden"
+    class="min-h-screen bg-[#000000] text-white pt-32 px-4 md:px-12 pb-20 relative overflow-hidden"
   >
-    <!-- Background Effects -->
-    <div class="fixed inset-0 pointer-events-none">
+    <!-- Background Effects (Luxe) -->
+    <div class="fixed inset-0 pointer-events-none z-0">
       <div
-        class="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-900/10 blur-[150px] rounded-full"
+        class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-size-[40px_40px] opacity-20"
       >
       </div>
       <div
-        class="absolute bottom-[-20%] left-[-10%] w-[60%] h-[60%] bg-cyan-900/10 blur-[150px] rounded-full"
+        class="absolute inset-0 bg-[radial-gradient(circle_800px_at_100%_0%,rgba(120,119,198,0.1),transparent)]"
       >
       </div>
       <div
-        class="absolute inset-0 opacity-[0.03] bg-[url('/assets/noise.png')]"
+        class="absolute inset-0 opacity-[0.02] bg-[url('/assets/noise.png')]"
       >
       </div>
     </div>
@@ -97,28 +98,40 @@ const categories = [
       <!-- Page Header -->
       <div class="mb-16">
         <div
-          class="flex flex-col md:flex-row justify-between items-end gap-6 mb-8"
+          class="flex flex-col md:flex-row justify-between items-end gap-6 mb-12"
         >
           <div>
+            <div class="flex items-center gap-2 mb-4">
+              <div
+                class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"
+              >
+              </div>
+              <span
+                class="text-[10px] font-mono uppercase tracking-widest text-zinc-500"
+                >Live Games</span
+              >
+            </div>
             <h1
-              class="text-6xl md:text-8xl font-black uppercase tracking-tighter mb-4"
+              class="text-5xl md:text-8xl font-black uppercase tracking-tighter mb-4 text-white"
             >
-              Explore <span
-                class="text-transparent bg-clip-text bg-linear-to-r from-purple-500 to-cyan-500"
-                >Universe</span>
+              Play <span
+                class="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-cyan-500 opacity-90"
+                >Awesome</span
+              > Games
             </h1>
-            <p class="text-gray-400 text-lg max-w-xl">
-              Discover thousands of worlds created by the VXLVERSE community.
-              Play instantly in your browser.
+            <p class="text-zinc-400 text-lg max-w-xl font-light">
+              Thousands of user-created worlds. <span class="text-white"
+                >Play instantly.</span
+              > No downloads.
             </p>
           </div>
 
-          <!-- Search -->
+          <!-- Search (Human) -->
           <div class="w-full md:w-auto relative group">
             <input
               type="text"
-              placeholder="Search worlds..."
-              class="w-full md:w-[300px] bg-white/5 border border-white/10 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors text-white placeholder-gray-600"
+              placeholder="Find games..."
+              class="w-full md:w-[300px] bg-black/50 border border-white/10 rounded-full px-6 py-4 text-xs font-mono focus:outline-none focus:border-white/30 transition-colors text-white placeholder-zinc-700 uppercase tracking-widest backdrop-blur-md"
             />
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -126,7 +139,7 @@ const categories = [
               viewBox="0 0 24 24"
               stroke-width="1.5"
               stroke="currentColor"
-              class="w-5 h-5 text-gray-500 absolute right-4 top-1/2 -translate-y-1/2 group-hover:text-white transition-colors"
+              class="w-4 h-4 text-zinc-700 absolute right-6 top-1/2 -translate-y-1/2 group-hover:text-white transition-colors"
             >
               <path
                 stroke-linecap="round"
@@ -142,7 +155,7 @@ const categories = [
           {
             categories.map((cat, i) => (
               <button
-                class={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest border transition-all ${i === 0 ? "bg-white text-black border-white" : "bg-transparent text-gray-500 border-white/10 hover:border-white hover:text-white"}`}
+                class={`px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all duration-300 ${i === 0 ? "bg-white text-black border-white hover:bg-zinc-200" : "bg-transparent text-zinc-500 border-white/5 hover:border-white/30 hover:text-white"}`}
               >
                 {cat}
               </button>
@@ -157,31 +170,23 @@ const categories = [
       >
         {
           featuredGames.map((game, i) => (
-            <div
-              class={`group relative aspect-3/4 bg-[#0a0a0a] border border-white/5 hover:border-purple-500/50 transition-all duration-300 rounded-sm overflow-hidden cursor-pointer tilt-card delay-${i * 100}`}
+            // @ts-ignore
+            <Card
+              title={game.title}
+              subtitle={game.subtitle}
+              badge={game.badge}
+              @ts-ignore
+              badgeColor={game.badgeColor}
+              image={game.image}
+              class={`aspect-[3/4] tilt-card delay-${i * 100}`}
             >
-              <div
-                class="absolute inset-0 bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-500 group-hover:scale-105"
-                style={`background-image: url('${game.image}')`}
-              />
-              <div class="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
-              <div class="absolute bottom-0 left-0 p-6 w-full">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="px-2 py-0.5 bg-white/10 text-[8px] font-bold text-white uppercase rounded-sm backdrop-blur-md">
-                    {game.genre}
-                  </span>
-                  <span class="text-[10px] text-gray-400 flex items-center gap-1">
-                    <div class="w-1.5 h-1.5 rounded-full bg-green-500" />{" "}
-                    {game.players}
-                  </span>
-                </div>
-                <h3 class="text-xl font-bold text-white leading-tight mb-1 group-hover:text-purple-400 transition-colors">
-                  {game.title}
-                </h3>
-                <p class="text-xs text-gray-400 mb-2">by {game.author}</p>
-                <p class="text-xs text-gray-500 line-clamp-2">{game.desc}</p>
-              </div>
-            </div>
+              <span
+                slot="badge-extra"
+                class="text-[9px] text-zinc-500 font-mono"
+              >
+                ID: {game.id}
+              </span>
+            </Card>
           ))
         }
       </div>
@@ -190,7 +195,7 @@ const categories = [
 </Layout>
 
 <script>
-  // 3D Tilt Logic (Reused)
+  // 3D Tilt Logic
   const cards = document.querySelectorAll(".tilt-card");
   cards.forEach((card) => {
     card.addEventListener("mousemove", (e) => {

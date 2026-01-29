@@ -1,0 +1,88 @@
+---
+interface Props {
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  badgeColor?: "purple" | "cyan" | "emerald" | "zinc";
+  image?: string;
+  href?: string;
+  class?: string;
+}
+
+const {
+  title,
+  subtitle,
+  badge,
+  badgeColor = "zinc",
+  image,
+  href = "#",
+  class: className,
+} = Astro.props;
+
+const badgeColors = {
+  purple: "border-purple-500/30 text-purple-400 bg-purple-500/10",
+  cyan: "border-cyan-500/30 text-cyan-400 bg-cyan-500/10",
+  emerald: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10",
+  zinc: "border-zinc-500/30 text-zinc-400 bg-zinc-500/10",
+};
+
+const hoverTextColors = {
+  purple: "group-hover:text-purple-300",
+  cyan: "group-hover:text-cyan-300",
+  emerald: "group-hover:text-emerald-300",
+  zinc: "group-hover:text-white",
+};
+---
+
+<a
+  href={href}
+  class={`group relative block bg-black border border-white/10 hover:border-white/30 transition-all duration-300 overflow-hidden cursor-pointer ${className}`}
+>
+  {
+    image && (
+      <>
+        <div
+          class="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity duration-500 grayscale group-hover:grayscale-0"
+          style={`background-image: url('${image}')`}
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+      </>
+    )
+  }
+
+  <div class="relative z-10 p-6 h-full flex flex-col justify-end">
+    <slot name="header" />
+
+    {
+      badge && (
+        <div class="flex items-center gap-2 mb-3">
+          <span
+            class={`px-1.5 py-0.5 border text-[8px] font-bold uppercase tracking-wider ${badgeColors[badgeColor]}`}
+          >
+            {badge}
+          </span>
+          <slot name="badge-extra" />
+        </div>
+      )
+    }
+
+    <h3
+      class={`text-lg font-bold text-white leading-tight mb-1 transition-colors ${hoverTextColors[badgeColor]}`}
+    >
+      {title}
+    </h3>
+
+    {
+      subtitle && (
+        <>
+          <div class="h-px w-full bg-white/10 my-3" />
+          <p class="text-[10px] text-zinc-500 uppercase tracking-wide">
+            {subtitle}
+          </p>
+        </>
+      )
+    }
+
+    <slot />
+  </div>
+</a>

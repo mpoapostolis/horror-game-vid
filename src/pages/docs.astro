@@ -4,39 +4,71 @@ import Header from "../components/common/Header.astro";
 import "../styles/global.css";
 ---
 
-<Layout title="Documentation | VXLVERSE">
+<Layout title="Docs | VXLVERSE">
   <Header />
 
   <div
-    class="min-h-screen bg-[#020202] text-white pt-32 px-4 flex flex-col items-center justify-center relative overflow-hidden"
+    class="min-h-screen bg-[#000000] text-white pt-32 px-4 flex flex-col items-center justify-center relative overflow-hidden"
   >
-    <div class="fixed inset-0 pointer-events-none">
+    <!-- Background Effects (Luxe) -->
+    <div class="fixed inset-0 pointer-events-none z-0">
       <div
-        class="absolute inset-0 opacity-[0.03] bg-[url('/assets/noise.png')]"
+        class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-size-[40px_40px] opacity-20"
+      >
+      </div>
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_100%,rgba(168,85,247,0.1),transparent)]"
+      >
+      </div>
+      <div
+        class="absolute inset-0 opacity-[0.02] bg-[url('/assets/noise.png')]"
       >
       </div>
     </div>
 
     <div class="text-center z-10 max-w-2xl">
       <div
-        class="inline-block px-3 py-1 border border-purple-500/30 rounded-full bg-purple-500/10 mb-6"
+        class="inline-block px-3 py-1 border border-purple-500/30 rounded-full bg-purple-500/10 mb-8 animate-pulse"
       >
-        <span class="text-[10px] uppercase tracking-widest text-purple-400"
+        <span
+          class="text-[10px] uppercase tracking-widest text-purple-400 font-mono"
           >Coming Soon</span
         >
       </div>
+
       <h1
-        class="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-4"
+        class="text-4xl md:text-7xl font-black uppercase tracking-tighter mb-6 relative"
       >
-        VXL SCRIPT <span class="text-gray-600">DOCS</span>
+        Learning <span class="text-zinc-600">Center</span>
       </h1>
-      <p class="text-gray-400 mb-8">
-        Detailed API references and tutorials are being written by our neural
-        nets.
+
+      <div
+        class="w-full max-w-md mx-auto bg-black border border-white/10 rounded-lg p-6 text-left mb-8 shadow-2xl relative overflow-hidden"
+      >
+        <h3 class="text-lg font-bold text-white mb-2">Documentation</h3>
+        <p class="text-zinc-400 text-sm mb-4">
+          We are currently writing the comprehensive guides for:
+        </p>
+        <ul class="space-y-2 text-xs text-zinc-500 font-mono">
+          <li class="flex items-center gap-2">
+            <div class="w-1 h-1 bg-green-500 rounded-full"></div> VXLScript API
+          </li>
+          <li class="flex items-center gap-2">
+            <div class="w-1 h-1 bg-green-500 rounded-full"></div> Physics Engine
+          </li>
+          <li class="flex items-center gap-2">
+            <div class="w-1 h-1 bg-green-500 rounded-full"></div> Asset Imports
+          </li>
+        </ul>
+      </div>
+
+      <p class="text-zinc-500 mb-12 text-sm tracking-wide">
+        Full documentation will be available at launch.
       </p>
+
       <a
         href="/"
-        class="text-xs uppercase tracking-widest text-white border-b border-white pb-1 hover:text-purple-400 hover:border-purple-400 transition-colors"
+        class="inline-block px-8 py-3 bg-white text-black font-bold uppercase tracking-widest text-[10px] hover:scale-105 transition-transform"
         >Return Home</a
       >
     </div>
